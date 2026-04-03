@@ -1,0 +1,118 @@
+.entity-stage {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.entity-summary {
+  min-width: 160px;
+  padding: 14px 16px;
+}
+
+.entity-summary strong {
+  display: block;
+  margin-top: 8px;
+  font-family: "Instrument Serif", serif;
+  font-size: 1.2rem;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.data-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.data-table th,
+.data-table td {
+  padding: 14px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(100, 74, 53, 0.08);
+  font-size: 0.92rem;
+}
+
+.data-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(255, 252, 248, 0.96);
+  color: rgba(88, 66, 49, 0.84);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.data-table tbody tr {
+  transition: background 180ms ease;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(255, 245, 235, 0.72);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.crud-form {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.crud-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.93rem;
+  font-weight: 700;
+}
+
+.crud-form .button {
+  grid-column: 1 / -1;
+}
+
+html[data-theme="dark"] .table-wrap {
+  background: rgba(15, 23, 42, 0.52);
+}
+
+html[data-theme="dark"] .data-table th,
+html[data-theme="dark"] .data-table td {
+  border-bottom-color: rgba(148, 163, 184, 0.12);
+}
+
+html[data-theme="dark"] .data-table th {
+  background: rgba(8, 17, 29, 0.96);
+  color: rgba(226, 232, 240, 0.82);
+}
+
+html[data-theme="dark"] .data-table tbody tr:hover {
+  background: rgba(30, 41, 59, 0.58);
+}
+
+@media (max-width: 760px) {
+  .toolbar,
+  .entity-stage {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .crud-form {
+    grid-template-columns: 1fr;
+  }
+}

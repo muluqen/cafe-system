@@ -1,0 +1,81 @@
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap");
+
+:root {
+  --bg-main: #f4f6fb;
+  --bg-accent: #e7ecf6;
+  --bg-sidebar: #121722;
+  --card: rgba(255, 255, 255, 0.82);
+  --card-strong: #ffffff;
+  --text-main: #171b24;
+  --text-soft: #6d7383;
+  --text-inverse: #f7f9fc;
+  --line: rgba(26, 33, 47, 0.1);
+  --accent: #ff7a59;
+  --accent-soft: #ffe4db;
+  --accent-strong: #d85431;
+  --olive: #4e8b78;
+  --shadow-sm: 0 10px 24px rgba(18, 23, 34, 0.07);
+  --shadow-md: 0 28px 70px rgba(18, 23, 34, 0.14);
+  --page-glow-a: rgba(255, 122, 89, 0.16);
+  --page-glow-b: rgba(78, 139, 120, 0.14);
+  --page-glow-c: rgba(122, 149, 255, 0.1);
+  --page-sheen: rgba(255, 255, 255, 0.14);
+  --theme-toggle-bg: rgba(255, 255, 255, 0.78);
+  --theme-toggle-text: #16202f;
+  --theme-toggle-border: rgba(22, 32, 47, 0.1);
+}
+
+html[data-theme="dark"] {
+  --bg-main: #08111d;
+  --bg-accent: #0f1c2d;
+  --bg-sidebar: #0a1a2d;
+  --card: rgba(11, 20, 33, 0.82);
+  --card-strong: #0f1c2d;
+  --text-main: #eef4fb;
+  --text-soft: #96a5b8;
+  --text-inverse: #f7fbff;
+  --line: rgba(148, 163, 184, 0.16);
+  --accent-soft: rgba(249, 115, 22, 0.18);
+  --shadow-sm: 0 12px 30px rgba(2, 8, 20, 0.4);
+  --shadow-md: 0 30px 80px rgba(2, 8, 20, 0.5);
+  --page-glow-a: rgba(34, 211, 238, 0.14);
+  --page-glow-b: rgba(16, 185, 129, 0.12);
+  --page-glow-c: rgba(249, 115, 22, 0.1);
+  --page-sheen: rgba(8, 17, 29, 0.16);
+  --theme-toggle-bg: rgba(8, 17, 29, 0.82);
+  --theme-toggle-text: #eef4fb;
+  --theme-toggle-border: rgba(148, 163, 184, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family: "Plus Jakarta Sans", sans-serif;
+  color: var(--text-main);
+  background:
+    radial-gradient(circle at top left, var(--page-glow-a), transparent 24%),
+    radial-gradient(circle at 85% 10%, var(--page-glow-b), transparent 20%),
+    radial-gradient(circle at 50% 100%, var(--page-glow-c), transparent 26%),
+    linear-gradient(180deg, var(--bg-main) 0%, var(--bg-accent) 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, var(--page-sheen), transparent 35%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
