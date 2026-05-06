@@ -1,5 +1,14 @@
 <template>
   <div class="app-shell" :class="{ 'customer-mode': auth.isCustomer }">
+    <WelcomeOverlay
+      v-if="auth.isCustomer"
+      :visible="welcomeVisible"
+      :headline="welcomeHeadline"
+      :message="welcomeMessage"
+      :restaurant-name="selectedRestaurantLabel"
+      @enter="dismissWelcome"
+    />
+
     <!-- Mobile FAB -->
     <button
       class="nav-fab mobile-trigger"
@@ -17,9 +26,9 @@
     <aside class="sidebar" :class="{ 'is-open': mobileMenuOpen }">
       <div class="sidebar-head">
         <div>
-          <div class="brand">{{ auth.isCustomer ? "platrick" : restaurantBrand }}</div>
+          <div class="brand">{{ auth.isCustomer ? "dinedirect" : restaurantBrand }}</div>
           <p v-if="auth.isRestaurant" class="sidebar-brand-meta">
-            {{ staffRoleLabel }} portal
+            {{ staffRoleLabel }}
           </p>
         </div>
       </div>
@@ -91,10 +100,13 @@
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
 import { RouterLink, RouterView, useRoute, useRouter } from "vue-router";
+import WelcomeOverlay from "../components/customer/WelcomeOverlay.vue";
 import { entities } from "../config/entities";
 import { useAuthStore } from "../stores/authStore";
+import { getStaffRoleMeta } from "../utils/staffRoles";
 
 const mobileMenuOpen = ref(false);
+const welcomeVisible = ref(false);
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
@@ -112,7 +124,7 @@ const navLinks = computed(() =>
     : [
         ...(auth.staffRole === "manager" ? [{ name: "restaurant-builder", label: "Site Builder" }] : []),
         ...(auth.staffRole === "manager" ? [{ name: "restaurant-pulse", label: "Customer Voice" }] : []),
-        { name: "dashboard", label: auth.staffRole === "manager" ? "Owner Home" : "Dashboard" }
+        ...(auth.staffRole === "manager" ? [] : [{ name: "dashboard", label: "Dashboard" }])
       ]
 );
 
@@ -127,17 +139,31 @@ const visibleEntities = computed(() =>
 );
 
 const restaurantOptions = computed(() => auth.publicRestaurants);
+const selectedRestaurantLabel = computed(() => {
+  const selected = auth.publicRestaurants.find(
+    (row) => String(row.id) === String(auth.selectedRestaurantId || "")
+  );
+  return selected?.name || "your next stop";
+});
 const restaurantBrand = computed(() => {
   const match = auth.publicRestaurants.find(
     (row) => String(row.id) === String(auth.user?.restaurant_id || "")
   );
-  return match?.name || "platrick";
+  return match?.name || "dinedirect";
 });
 const staffRoleLabel = computed(() => {
-  if (auth.staffRole === "cashier") return "Cashier";
-  if (auth.staffRole === "barista") return "Barista";
-  return "portal manager";
+  return getStaffRoleMeta(auth.staffRole).workspaceLabel;
 });
+const welcomeHeadline = computed(() =>
+  selectedRestaurantLabel.value === "your next stop"
+    ? `Welcome, ${auth.user?.name || "guest"}.`
+    : `Welcome, ${auth.user?.name || "guest"}. ${selectedRestaurantLabel.value} is ready.`
+);
+const welcomeMessage = computed(() =>
+  selectedRestaurantLabel.value === "your next stop"
+    ? "Choose a restaurant and step into a smoother ordering flow."
+    : "Pick your meal, tune every detail, and send it to the kitchen in one calm flow."
+);
 
 function toggleMobileMenu() {
   mobileMenuOpen.value = !mobileMenuOpen.value;
@@ -150,9 +176,19 @@ function handleNavClick() {
 }
 
 async function loadRestaurantsForCustomer() {
-  if (!auth.publicRestaurants.length) {
-    await auth.loadPublicRestaurants();
+  await auth.loadPublicRestaurants();
+}
+
+function triggerCustomerWelcome() {
+  if (!auth.isCustomer || !auth.user?.id || !auth.justLoggedIn || route.name !== "customer-discover") {
+    return;
   }
+  welcomeVisible.value = true;
+  auth.consumeLoginState();
+}
+
+function dismissWelcome() {
+  welcomeVisible.value = false;
 }
 
 async function logout() {
@@ -160,7 +196,10 @@ async function logout() {
   router.push("/login");
 }
 
-onMounted(loadRestaurantsForCustomer);
+onMounted(async () => {
+  await loadRestaurantsForCustomer();
+  triggerCustomerWelcome();
+});
 
 watch(() => route.fullPath, () => {
   if (window.innerWidth <= 760) {
@@ -171,4 +210,11 @@ watch(() => route.fullPath, () => {
 watch(() => auth.selectedRestaurantId, (value) => {
   selectedRestaurant.value = value || "";
 });
+
+watch(
+  () => [auth.user?.id, auth.justLoggedIn, route.name],
+  () => {
+    triggerCustomerWelcome();
+  }
+);
 </script>

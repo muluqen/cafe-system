@@ -1,5 +1,5 @@
 <template>
-  <section class="customer-stack">
+  <section class="customer-stack" :style="themeStyle">
     <section class="panel feedback-hero">
       <div>
         <span class="eyebrow">Restaurant Voice</span>
@@ -136,6 +136,7 @@ import {
   getCustomerFeedbackHistory,
   saveCustomerFeedbackHistory
 } from "../utils/restaurantFeedback";
+import { getRestaurantBranding } from "../utils/restaurantBranding";
 const auth = useAuthStore();
 const message = ref("");
 const entries = ref([]);
@@ -164,6 +165,12 @@ const selectedRestaurantName = computed(() => {
   );
   return restaurant?.name || "the selected restaurant";
 });
+const restaurantBranding = computed(() => getRestaurantBranding(auth.selectedRestaurantId));
+const themeStyle = computed(() => ({
+  "--restaurant-brand": restaurantBranding.value.brandColor || "#1A2A40",
+  "--restaurant-brand-soft": `${restaurantBranding.value.brandColor || "#1A2A40"}1f`,
+  "--restaurant-brand-gradient": `linear-gradient(135deg, ${(restaurantBranding.value.brandColors || [restaurantBranding.value.brandColor || "#1A2A40"]).join(", ")})`
+}));
 
 const feedbackKey = computed(
   () => `${auth.user?.id || "guest"}:${auth.selectedRestaurantId || "none"}`
@@ -216,9 +223,7 @@ function formatDate(value) {
 }
 
 onMounted(async () => {
-  if (!auth.publicRestaurants.length) {
-    await auth.loadPublicRestaurants();
-  }
+  await auth.loadPublicRestaurants();
   readEntries();
 });
 

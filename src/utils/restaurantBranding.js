@@ -1,8 +1,8 @@
 const DEFAULT_CONFIG = {
   headline: "",
   customerMessage: "",
-  brandColor: "#ff7a59",
-  brandColors: ["#ff7a59", "#ffb36c"],
+  brandColor: "#1A2A40",
+  brandColors: ["#1A2A40", "#FF6B35", "#2ECC71"],
   logoUrl: ""
 };
 

@@ -40,13 +40,20 @@
       </div>
 
       <p v-if="store.error" class="muted">{{ store.error }}</p>
+      <div v-if="successMessage" class="status-banner status-banner-success entity-status-banner">
+        <span class="status-banner-dot" />
+        <div>
+          <strong>Done</strong>
+          <p>{{ successMessage }}</p>
+        </div>
+      </div>
 
       <div v-else-if="rows.length" class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
               <th v-for="key in columns" :key="key">
-                {{ key }}
+                {{ labelize(key) }}
               </th>
               <th>Actions</th>
             </tr>
@@ -54,7 +61,7 @@
           <tbody>
             <tr v-for="row in rows" :key="row.id || row.uuid || JSON.stringify(row)">
               <td v-for="key in columns" :key="`${row.id || row.uuid}-${key}`">
-                {{ formatCell(row[key]) }}
+                {{ formatRowValue(key, row[key]) }}
               </td>
               <td>
                 <div class="row-actions">
@@ -90,7 +97,13 @@
           <form class="crud-form" @submit.prevent="save">
             <label v-for="field in editableFields" :key="field">
               {{ field }}
-              <input v-model="form[field]" class="input" type="text" />
+              <select v-if="field === 'staff_role'" v-model="form[field]" class="input">
+                <option value="manager">Owner</option>
+                <option v-for="role in staffRoleOptions" :key="role.value" :value="role.value">
+                  {{ role.label }}
+                </option>
+              </select>
+              <input v-else v-model="form[field]" class="input" type="text" />
             </label>
             <button class="button" :disabled="store.saving">
               {{ store.saving ? "Saving..." : "Save" }}
@@ -106,6 +119,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { useEntityStore } from "../stores/entityStore";
 import { useAuthStore } from "../stores/authStore";
+import { getStaffRoleMeta, staffRoleOptions } from "../utils/staffRoles";
 
 const props = defineProps({
   entity: {
@@ -120,15 +134,29 @@ const search = ref("");
 const formOpen = ref(false);
 const editId = ref(null);
 const form = ref({});
+const successMessage = ref("");
 
 const rows = computed(() => store.byEntity[props.entity.key] || []);
+const hiddenColumns = ["created_at", "updated_at", "deleted_at", "restaurant"];
+
+const preferredFields = computed(() =>
+  props.entity.fields?.length
+    ? props.entity.fields
+    : []
+);
+
 const columns = computed(() => {
   const first = rows.value[0];
   if (!first || typeof first !== "object") {
     return [];
   }
 
-  return Object.keys(first).slice(0, 8);
+  const preferred = ["id", ...preferredFields.value];
+  const available = Object.keys(first).filter((key) => !hiddenColumns.includes(key));
+  const ordered = preferred.filter((key) => available.includes(key));
+  const extras = available.filter((key) => !ordered.includes(key) && typeof first[key] !== "object");
+
+  return [...ordered, ...extras].slice(0, 7);
 });
 const editableFields = computed(() =>
   props.entity.fields?.length
@@ -167,15 +195,38 @@ function formatCell(value) {
     return "-";
   }
 
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  if (typeof value === "string" && value.includes("T") && !Number.isNaN(Date.parse(value))) {
+    return new Date(value).toLocaleString();
+  }
+
   if (typeof value === "object") {
-    return JSON.stringify(value);
+    return value.name || value.title || value.label || "#linked";
   }
 
   return String(value);
 }
 
+function formatRowValue(key, value) {
+  if (key === "staff_role") {
+    return getStaffRoleMeta(value || "manager").label;
+  }
+
+  return formatCell(value);
+}
+
+function labelize(value) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function load() {
-  store.fetchEntities(props.entity.key, search.value.trim());
+  successMessage.value = "";
+  return store.fetchEntities(props.entity.key, search.value.trim());
 }
 
 function canEdit(row) {
@@ -194,6 +245,9 @@ function canEdit(row) {
 function startCreate() {
   editId.value = null;
   form.value = Object.fromEntries(editableFields.value.map((field) => [field, ""]));
+  if (Object.prototype.hasOwnProperty.call(form.value, "staff_role")) {
+    form.value.staff_role = "server";
+  }
   formOpen.value = true;
 }
 
@@ -240,14 +294,20 @@ function normalizePayload(source) {
 }
 
 async function save() {
-  const payload = normalizePayload(form.value);
-  if (editId.value) {
-    await store.updateEntity(props.entity.key, editId.value, payload);
-  } else {
-    await store.createEntity(props.entity.key, payload);
+  try {
+    const payload = normalizePayload(form.value);
+    const action = editId.value ? "updated" : "created";
+    if (editId.value) {
+      await store.updateEntity(props.entity.key, editId.value, payload);
+    } else {
+      await store.createEntity(props.entity.key, payload);
+    }
+    await load();
+    successMessage.value = `${props.entity.label} ${action} successfully.`;
+    closeForm();
+  } catch {
+    // The store already exposes the API error for the user.
   }
-  closeForm();
-  load();
 }
 
 async function remove(row) {
@@ -255,7 +315,8 @@ async function remove(row) {
     return;
   }
   await store.deleteEntity(props.entity.key, row.id);
-  load();
+  await load();
+  successMessage.value = `${props.entity.label} removed successfully.`;
 }
 
 watch(

@@ -34,12 +34,30 @@ abstract class BaseApiController extends Controller
     /**
      * @var array<int, string>
      */
-    protected array $allowedStaffRoles = ['manager', 'cashier', 'barista'];
+    protected array $allowedStaffRoles = [
+        'manager',
+        'floor_manager',
+        'host',
+        'server',
+        'cashier',
+        'barista',
+        'kitchen',
+        'inventory',
+    ];
 
     /**
      * @var array<int, string>
      */
-    protected array $mutableStaffRoles = ['manager'];
+    protected array $mutableStaffRoles = [
+        'manager',
+        'floor_manager',
+        'host',
+        'server',
+        'cashier',
+        'barista',
+        'kitchen',
+        'inventory',
+    ];
 
     protected bool $allowCustomerMutations = false;
 

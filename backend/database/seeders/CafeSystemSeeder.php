@@ -44,7 +44,7 @@ class CafeSystemSeeder extends Seeder
                 'address' => '42 River Ave',
                 'is_active' => true,
             ],
-        ])->map(fn (array $restaurant) => Restaurant::query()->create($restaurant));
+        ])->map(fn(array $restaurant) => Restaurant::query()->create($restaurant));
 
         $staffUsers = collect([
             ['name' => 'Downtown Manager', 'email' => 'downtown.manager@cafesystem.local', 'restaurant_idx' => 0, 'staff_role' => 'manager'],
@@ -68,7 +68,7 @@ class CafeSystemSeeder extends Seeder
             ['name' => 'Customer One', 'email' => 'customer1@cafesystem.local'],
             ['name' => 'Customer Two', 'email' => 'customer2@cafesystem.local'],
             ['name' => 'Customer Three', 'email' => 'customer3@cafesystem.local'],
-        ])->map(fn (array $user) => User::query()->create([
+        ])->map(fn(array $user) => User::query()->create([
             ...$user,
             'password' => Hash::make('password123'),
             'role' => 'customer',
@@ -95,7 +95,7 @@ class CafeSystemSeeder extends Seeder
                 ['name' => 'Coffee', 'display_order' => 1],
                 ['name' => 'Pastries', 'display_order' => 2],
                 ['name' => 'Sandwiches', 'display_order' => 3],
-            ])->map(fn (array $category) => MenuCategory::query()->create([
+            ])->map(fn(array $category) => MenuCategory::query()->create([
                 'restaurant_id' => $restaurant->id,
                 'name' => $category['name'],
                 'display_order' => $category['display_order'],
@@ -131,7 +131,7 @@ class CafeSystemSeeder extends Seeder
                 ['name' => 'Flour', 'unit' => 'kg', 'stock' => 40.000, 'reorder' => 12.000, 'cost' => 1.20],
                 ['name' => 'Turkey Slices', 'unit' => 'kg', 'stock' => 16.000, 'reorder' => 5.000, 'cost' => 9.35],
                 ['name' => 'Tomatoes', 'unit' => 'kg', 'stock' => 18.000, 'reorder' => 6.000, 'cost' => 2.40],
-            ])->map(fn (array $ingredient) => Ingredient::query()->create([
+            ])->map(fn(array $ingredient) => Ingredient::query()->create([
                 'restaurant_id' => $restaurant->id,
                 'name' => $ingredient['name'],
                 'unit' => $ingredient['unit'],
@@ -173,7 +173,7 @@ class CafeSystemSeeder extends Seeder
                 $ingredient->update(['current_stock' => $balance]);
             }
 
-            $tables = collect(range(1, 6))->map(fn (int $index) => DiningTable::query()->create([
+            $tables = collect(range(1, 6))->map(fn(int $index) => DiningTable::query()->create([
                 'restaurant_id' => $restaurant->id,
                 'name' => 'T-' . $index,
                 'capacity' => Arr::random([2, 2, 4, 4, 6]),
@@ -193,7 +193,7 @@ class CafeSystemSeeder extends Seeder
                     'starts_at' => Carbon::today()->setTime(14, 0),
                     'ends_at' => Carbon::today()->setTime(22, 0),
                 ],
-            ])->map(fn (array $shift) => Shift::query()->create([
+            ])->map(fn(array $shift) => Shift::query()->create([
                 'restaurant_id' => $restaurant->id,
                 'name' => $shift['name'],
                 'starts_at' => $shift['starts_at'],

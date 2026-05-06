@@ -4,7 +4,7 @@
       <div class="hero-copy">
         <span class="eyebrow">Your Restaurant Space</span>
         <h1 class="hero-title">
-          {{ restaurantName }} runs on Platrick like it owns the place.
+          {{ restaurantName }} runs on DineDirect like it owns the place.
         </h1>
         <p class="hero-text">
           This is your operational home. Add, remove, and shape the exact parts of the restaurant
@@ -105,26 +105,9 @@ import { computed, onMounted } from "vue";
 import { RouterLink } from "vue-router";
 import { entities } from "../config/entities";
 import { useAuthStore } from "../stores/authStore";
+import { getStaffRoleMeta } from "../utils/staffRoles";
 
 const auth = useAuthStore();
-
-const roleMeta = {
-  manager: {
-    label: "Owner / Manager",
-    copy: "You oversee the whole restaurant: setup, staff, menu, floor, stock, and payments.",
-    landingLabel: "Owner home"
-  },
-  cashier: {
-    label: "Cashier",
-    copy: "You focus on live service flow: orders, table movement, and payment follow-through.",
-    landingLabel: "Orders"
-  },
-  barista: {
-    label: "Barista / Kitchen",
-    copy: "You focus on what gets prepared: menu readiness, order details, and service handoff.",
-    landingLabel: "Menu Items"
-  }
-};
 
 const zoneDefinitions = [
   {
@@ -164,9 +147,9 @@ const restaurantName = computed(() => {
   return match?.name || "Your restaurant";
 });
 
-const roleInfo = computed(() => roleMeta[auth.staffRole] || roleMeta.manager);
+const roleInfo = computed(() => getStaffRoleMeta(auth.staffRole));
 const roleLabel = computed(() => roleInfo.value.label);
-const roleCopy = computed(() => roleInfo.value.copy);
+const roleCopy = computed(() => roleInfo.value.description);
 const landingLabel = computed(() => roleInfo.value.landingLabel);
 
 const primaryActions = computed(() => {
@@ -178,11 +161,43 @@ const primaryActions = computed(() => {
     ];
   }
 
-  if (auth.staffRole === "barista") {
+  if (auth.staffRole === "floor_manager") {
+    return [
+      { label: "Open Orders", to: { name: "orders" } },
+      { label: "Manage Tables", to: { name: "tables" } },
+      { label: "Plan Shifts", to: { name: "shifts" } }
+    ];
+  }
+
+  if (auth.staffRole === "host") {
+    return [
+      { label: "Manage Tables", to: { name: "tables" } },
+      { label: "Seat Guests", to: { name: "table_sessions" } },
+      { label: "Check Orders", to: { name: "orders" } }
+    ];
+  }
+
+  if (auth.staffRole === "barista" || auth.staffRole === "kitchen") {
     return [
       { label: "Edit Menu", to: { name: "menu_items" } },
       { label: "View Orders", to: { name: "orders" } },
-      { label: "Check Categories", to: { name: "menu_categories" } }
+      { label: auth.staffRole === "kitchen" ? "Track Ingredients" : "Check Categories", to: { name: auth.staffRole === "kitchen" ? "ingredients" : "menu_categories" } }
+    ];
+  }
+
+  if (auth.staffRole === "inventory") {
+    return [
+      { label: "Track Ingredients", to: { name: "ingredients" } },
+      { label: "Log Stock Moves", to: { name: "inventory_transactions" } },
+      { label: "Open Menu", to: { name: "menu_items" } }
+    ];
+  }
+
+  if (auth.staffRole === "server") {
+    return [
+      { label: "Open Orders", to: { name: "orders" } },
+      { label: "Manage Tables", to: { name: "tables" } },
+      { label: "Track Sessions", to: { name: "table_sessions" } }
     ];
   }
 
@@ -210,16 +225,18 @@ function actionCopy(item) {
     return `Add, edit, or remove ${item.label.toLowerCase()} for ${restaurantName.value}.`;
   }
 
-  if (auth.staffRole === "cashier") {
+  if (["cashier", "host", "server", "floor_manager"].includes(auth.staffRole)) {
     return `Handle ${item.label.toLowerCase()} that support front-of-house service.`;
   }
 
-  return `Work on ${item.label.toLowerCase()} that affect preparation and service flow.`;
+  if (["barista", "kitchen", "inventory"].includes(auth.staffRole)) {
+    return `Work on ${item.label.toLowerCase()} that affect preparation, stock, and service flow.`;
+  }
+
+  return `Work on ${item.label.toLowerCase()} that fit this role's responsibilities.`;
 }
 
 onMounted(async () => {
-  if (!auth.publicRestaurants.length) {
-    await auth.loadPublicRestaurants();
-  }
+  await auth.loadPublicRestaurants();
 });
 </script>

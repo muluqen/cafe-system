@@ -23,6 +23,14 @@
             <strong>{{ step.label }}</strong>
           </button>
         </div>
+
+        <div v-if="message" class="status-banner status-banner-success">
+          <span class="status-banner-dot" />
+          <div>
+            <strong>Done</strong>
+            <p>{{ message }}</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -44,6 +52,8 @@
     <PreviewStep
       v-else-if="currentStep.key === 'preview'"
       :form="brandForm"
+      :menu-items="menuItems"
+      :tables="tables"
       @back="goToPreviousStep"
       @next="goToNextStep"
     />
@@ -111,7 +121,7 @@ const currentStepIndex = ref(0);
 const saving = ref(false);
 const error = ref("");
 const message = ref("");
-const newColor = ref("#14b8a6");
+const newColor = ref("#2ECC71");
 
 const brandForm = reactive({
   id: null,
@@ -120,10 +130,11 @@ const brandForm = reactive({
   phone: "",
   email: "",
   address: "",
+  isActive: false,
   headline: "",
   customerMessage: "",
-  brandColor: "#ff7a59",
-  brandColors: ["#ff7a59", "#ffb36c"],
+  brandColor: "#1A2A40",
+  brandColors: ["#1A2A40", "#FF6B35", "#2ECC71"],
   logoUrl: ""
 });
 
@@ -139,7 +150,7 @@ const staffForm = reactive({
   name: "",
   email: "",
   password: "",
-  staff_role: "cashier"
+  staff_role: "server"
 });
 
 const tableForm = reactive({
@@ -227,12 +238,13 @@ async function loadRestaurant() {
   brandForm.phone = data.phone || "";
   brandForm.email = data.email || "";
   brandForm.address = data.address || "";
+  brandForm.isActive = Boolean(data.is_active);
   brandForm.headline = branding.headline || "";
   brandForm.customerMessage = branding.customerMessage || "";
-  brandForm.brandColor = branding.brandColor || "#ff7a59";
-  brandForm.brandColors = branding.brandColors?.length ? branding.brandColors : ["#ff7a59", "#ffb36c"];
+  brandForm.brandColor = branding.brandColor || "#1A2A40";
+  brandForm.brandColors = branding.brandColors?.length ? branding.brandColors : ["#1A2A40", "#FF6B35", "#2ECC71"];
   brandForm.logoUrl = branding.logoUrl || "";
-  newColor.value = brandForm.brandColors[brandForm.brandColors.length - 1] || "#14b8a6";
+  newColor.value = brandForm.brandColors[brandForm.brandColors.length - 1] || "#2ECC71";
 }
 
 async function loadSetupLists() {
@@ -249,15 +261,24 @@ async function loadSetupLists() {
   tables.value = tablesRes.data?.data || [];
 }
 
-async function persistBrand() {
-  await api.put(`/restaurants/${brandForm.id}`, {
+async function persistBrand(activate = brandForm.isActive) {
+  const restaurantId = brandForm.id || auth.user?.restaurant_id;
+
+  if (!restaurantId) {
+    throw new Error("Restaurant profile is not ready yet. Please refresh and try again.");
+  }
+
+  await api.put(`/restaurants/${restaurantId}`, {
     name: brandForm.name,
     slug: brandForm.slug || null,
     phone: brandForm.phone || null,
     email: brandForm.email || null,
     address: brandForm.address || null,
-    is_active: true
+    is_active: activate
   });
+
+  brandForm.id = restaurantId;
+  brandForm.isActive = activate;
 
   saveRestaurantBranding(auth.user.restaurant_id, {
     headline: brandForm.headline,
@@ -273,8 +294,7 @@ async function saveBrandAndPreview() {
   error.value = "";
   message.value = "";
   try {
-    await persistBrand();
-    await auth.loadPublicRestaurants();
+    await persistBrand(false);
     message.value = "First page saved. Now check the preview.";
     currentStepIndex.value = 1;
   } catch (requestError) {
@@ -312,6 +332,7 @@ async function ensureCategory() {
 async function saveMenuItem() {
   saving.value = true;
   error.value = "";
+  message.value = "";
   try {
     const menuCategoryId = await ensureCategory();
     await api.post("/menu_items", {
@@ -340,13 +361,16 @@ async function saveMenuItem() {
 }
 
 async function removeMenuItem(id) {
+  message.value = "";
   await api.delete(`/menu_items/${id}`);
   await loadSetupLists();
+  message.value = "Menu item removed successfully.";
 }
 
 async function saveStaffMember() {
   saving.value = true;
   error.value = "";
+  message.value = "";
   try {
     await api.post("/users", {
       name: staffForm.name,
@@ -358,7 +382,7 @@ async function saveStaffMember() {
       name: "",
       email: "",
       password: "",
-      staff_role: "cashier"
+      staff_role: "server"
     });
     await loadSetupLists();
     message.value = "Staff member added.";
@@ -376,6 +400,7 @@ async function updateStaffRole(member, role) {
 
   saving.value = true;
   error.value = "";
+  message.value = "";
   try {
     await api.put(`/users/${member.id}`, {
       name: member.name,
@@ -383,6 +408,7 @@ async function updateStaffRole(member, role) {
       staff_role: role
     });
     await loadSetupLists();
+    message.value = `${member.name}'s staff role was updated successfully.`;
   } catch (requestError) {
     error.value = requestError?.response?.data?.message || "Unable to update the staff role.";
   } finally {
@@ -391,13 +417,16 @@ async function updateStaffRole(member, role) {
 }
 
 async function removeStaffMember(id) {
+  message.value = "";
   await api.delete(`/users/${id}`);
   await loadSetupLists();
+  message.value = "Staff member removed successfully.";
 }
 
 async function saveTable() {
   saving.value = true;
   error.value = "";
+  message.value = "";
   try {
     await api.post("/tables", {
       restaurant_id: auth.user.restaurant_id,
@@ -422,16 +451,33 @@ async function saveTable() {
 }
 
 async function removeTable(id) {
+  message.value = "";
   await api.delete(`/tables/${id}`);
   await loadSetupLists();
+  message.value = "Table removed successfully.";
 }
 
 async function finishSetup() {
-  await persistBrand();
-  await router.push({ name: "dashboard" });
+  saving.value = true;
+  error.value = "";
+
+  try {
+    await persistBrand(true);
+    await auth.loadPublicRestaurants();
+    message.value = "Setup finished. Your restaurant is now visible to customers.";
+    await router.push({ name: "dashboard" });
+  } catch (requestError) {
+    error.value = requestError?.response?.data?.message || "Unable to finish the setup.";
+  } finally {
+    saving.value = false;
+  }
 }
 
 onMounted(async () => {
+  const welcomeNotice = auth.consumeRestaurantWelcomeNotice();
+  if (welcomeNotice) {
+    message.value = welcomeNotice;
+  }
   await loadRestaurant();
   await loadSetupLists();
 });

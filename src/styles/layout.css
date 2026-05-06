@@ -15,6 +15,29 @@
     linear-gradient(180deg, #161c28 0%, #10151f 100%);
   border-right: 1px solid rgba(255, 255, 255, 0.06);
   transition: transform 220ms ease;
+  overflow: hidden;
+}
+
+.sidebar::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 255, 255, 0.08), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 26%);
+}
+
+.sidebar::after {
+  content: "";
+  position: absolute;
+  top: 22px;
+  right: -54px;
+  width: 130px;
+  height: 130px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(45, 212, 191, 0.14), transparent 68%);
+  pointer-events: none;
 }
 
 .sidebar-head,
@@ -30,13 +53,13 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  margin-bottom: 18px;
+  margin-bottom: 20px;
 }
 
 .brand {
   margin: 0;
   font-family: "Instrument Serif", serif;
-  font-size: 2rem;
+  font-size: 2.15rem;
   line-height: 1;
   letter-spacing: 0.02em;
 }
@@ -52,10 +75,13 @@
 
 .sidebar-intro {
   margin-bottom: 18px;
-  padding: 14px;
+  padding: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.04);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+    rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
 }
 
 .sidebar-copy {
@@ -77,46 +103,66 @@
 }
 
 .nav-link {
+  position: relative;
   padding: 12px 14px;
-  border-radius: 14px;
+  border-radius: 16px;
   font-size: 0.95rem;
-  color: rgba(247, 242, 235, 0.82);
-  transition: transform 180ms ease, background 180ms ease, color 180ms ease;
+  color: rgba(247, 249, 252, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+  transition: transform 180ms ease, background 180ms ease, color 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
 }
 
 .nav-link:hover {
   transform: translateX(3px);
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .nav-link.router-link-active {
-  background: linear-gradient(135deg, #ff7a59, #ffb36c);
-  color: #fffaf5;
+  background: #FF6B35;
+  color: #ffffff;
   font-weight: 700;
-  box-shadow: 0 12px 26px rgba(194, 107, 52, 0.18);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 14px 28px rgba(255, 107, 53, 0.24);
+}
+
+.nav-link.router-link-active::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-50%);
 }
 
 .customer-mode .sidebar {
   background:
-    radial-gradient(circle at 12% 10%, rgba(34, 211, 238, 0.15), transparent 22%),
-    linear-gradient(180deg, #0f172a 0%, #111827 100%);
+    radial-gradient(circle at 12% 10%, rgba(26, 42, 64, 0.3), transparent 22%),
+    radial-gradient(circle at 88% 8%, rgba(255, 107, 53, 0.18), transparent 20%),
+    linear-gradient(180deg, #101b2d 0%, #1A2A40 100%);
 }
 
 html[data-theme="dark"] .sidebar {
   background:
-    radial-gradient(circle at 12% 10%, rgba(34, 211, 238, 0.1), transparent 24%),
-    linear-gradient(180deg, #08101a 0%, #0b1421 100%);
+    radial-gradient(circle at 12% 10%, rgba(26, 42, 64, 0.24), transparent 24%),
+    radial-gradient(circle at 88% 8%, rgba(255, 107, 53, 0.14), transparent 22%),
+    linear-gradient(180deg, #0f1724 0%, #172233 100%);
 }
 
 html[data-theme="light"] .sidebar {
   background:
-    radial-gradient(circle at top, rgba(255, 122, 89, 0.12), transparent 24%),
-    linear-gradient(180deg, #161c28 0%, #10151f 100%);
+    radial-gradient(circle at top, rgba(255, 107, 53, 0.12), transparent 24%),
+    radial-gradient(circle at 14% 10%, rgba(26, 42, 64, 0.16), transparent 22%),
+    linear-gradient(180deg, #172233 0%, #1A2A40 100%);
 }
 
 .customer-mode .nav-link.router-link-active {
-  background: linear-gradient(135deg, #0ea5e9, #14b8a6);
-  box-shadow: 0 12px 26px rgba(20, 184, 166, 0.2);
+  background: #FF6B35;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 14px 28px rgba(255, 107, 53, 0.26);
 }
 
 .main-content {
@@ -132,7 +178,7 @@ html[data-theme="light"] .sidebar {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 24px;
+  padding: 24px 28px;
   display: flex;
   justify-content: center;
 }
@@ -183,7 +229,7 @@ html[data-theme="light"] .sidebar {
   align-items: center;
   gap: 10px;
   padding: 10px 14px 10px 10px;
-  background: linear-gradient(140deg, #0f172a, #1e293b);
+  background: #1A2A40;
   color: #f8fafc;
   font: inherit;
   font-size: 0.82rem;

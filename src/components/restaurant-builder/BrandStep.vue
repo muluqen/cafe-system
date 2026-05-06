@@ -60,6 +60,9 @@
               + Add color
             </button>
           </div>
+          <p class="muted">
+            Platrik starts with its own official palette, but each restaurant can replace these with its own brand colors.
+          </p>
           <div class="builder-color-list">
             <button
               v-for="(color, index) in form.brandColors"

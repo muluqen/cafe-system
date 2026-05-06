@@ -9,7 +9,7 @@
 import { onMounted, ref, watch } from "vue";
 import { RouterView } from "vue-router";
 
-const THEME_KEY = "platrick_theme";
+const THEME_KEY = "dinedirect_theme";
 const theme = ref("light");
 
 function applyTheme(value) {

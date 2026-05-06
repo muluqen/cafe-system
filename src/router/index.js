@@ -13,6 +13,7 @@ import RestaurantBuilderView from "../views/RestaurantBuilderView.vue";
 import RestaurantPulseView from "../views/RestaurantPulseView.vue";
 import StaffLoginView from "../views/StaffLoginView.vue";
 import { entities } from "../config/entities";
+import { getStaffRoleMeta } from "../utils/staffRoles";
 
 function defaultRestaurantRoute(auth) {
   if (!auth.isRestaurant) {
@@ -22,16 +23,7 @@ function defaultRestaurantRoute(auth) {
   if (auth.staffRole === "manager") {
     return { name: "restaurant-builder" };
   }
-
-  if (auth.staffRole === "cashier") {
-    return { name: "orders" };
-  }
-
-  if (auth.staffRole === "barista") {
-    return { name: "menu_items" };
-  }
-
-  return { name: "dashboard" };
+  return getStaffRoleMeta(auth.staffRole).defaultRoute || { name: "dashboard" };
 }
 
 const entityRoutes = entities.map((entity) => ({
