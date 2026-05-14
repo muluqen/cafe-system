@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:cafe_system/core/theme/theme_provider.dart'; // Ensure path is correct
-import 'package:cafe_system/features/auth/providers/auth_provider.dart'; // Ensure path is correct
+
+import 'package:cafe_system/core/theme/theme_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   final bool isSignup;
   final VoidCallback onToggle;
   final bool loading;
   final String? error;
-  final Function(String email, String password, String? name) onSubmit;
+
+  final Future<void> Function(
+    Map<String, dynamic> data,
+  ) onSubmit;
 
   const LoginPage({
     super.key,
@@ -28,7 +31,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
   final _accessKeyController = TextEditingController();
-  
+
+  bool isStaffMode = false;
   String activeTab = "Sign in";
 
   @override
@@ -42,8 +46,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Detect current theme mode
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final backgroundColor = isDark ? const Color(0xFF0F172A) : Colors.white;
     final textColor = isDark ? Colors.white : Colors.black87;
     final labelColor = isDark ? Colors.white70 : Colors.black54;
@@ -52,27 +56,48 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       backgroundColor: backgroundColor,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 40,
+            vertical: 20,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 1. TOP ACTIONS (Toggle Theme & Customer Login)
+              // TOP BAR
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconButton(
-                    icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode, 
-                      color: isDark ? Colors.tealAccent : Colors.teal),
-                    onPressed: () => ref.read(themeProvider.notifier).toggleTheme(),
+                  // THEME BUTTON
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white10 : Colors.black12,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: IconButton(
+                      icon: Icon(
+                        isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
+                        color: textColor,
+                      ),
+                      onPressed: () {
+                        ref.read(themeProvider.notifier).toggleTheme();
+                      },
+                    ),
                   ),
+
+                  // STAFF / CUSTOMER SWITCH
                   TextButton(
-                    onPressed: widget.onToggle,
+                    onPressed: () {
+                      setState(() {
+                        isStaffMode = !isStaffMode;
+                        activeTab = "Sign in";
+                      });
+                    },
                     child: Text(
-                      widget.isSignup ? "BACK TO LOGIN" : "CUSTOMER LOGIN",
+                      isStaffMode ? "CUSTOMER LOGIN" : "RESTAURANT TEAM PORTAL",
                       style: const TextStyle(
-                        color: Color(0xFF14B8A6), 
-                        fontWeight: FontWeight.bold, 
-                        fontSize: 12
+                        color: Color(0xFF14B8A6),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
                       ),
                     ),
                   ),
@@ -81,102 +106,246 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
               const SizedBox(height: 30),
 
-              // 2. PILL TABS
-              Container(
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[200],
-                  borderRadius: BorderRadius.circular(30),
-                ),
-                padding: const EdgeInsets.all(4),
-                child: Row(
-                  children: [
-                    _buildTab("Sign in", isDark),
-                    _buildTab("Team account", isDark),
-                    _buildTab("New restaurant", isDark),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 40),
-
-              // 3. TEXT HEADERS
-              Text(
-                activeTab == "New restaurant" ? "Join Platrick" : "Restaurant team sign in",
-                style: TextStyle(
-                  color: textColor, 
-                  fontSize: 28, 
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.5
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                "Use your work account and restaurant access key to enter your portal.",
-                style: TextStyle(color: labelColor, fontSize: 15, height: 1.5),
-              ),
-
-              const SizedBox(height: 40),
-
-              // 4. FORM FIELDS
-              if (activeTab == "New restaurant") ...[
-                _buildLabel("Restaurant Name", labelColor),
-                _buildTextField(_nameController, "Cafe Name", isDark),
-                const SizedBox(height: 20),
-              ],
-
-              _buildLabel("Work email", labelColor),
-              _buildTextField(_emailController, "email@restaurant.com", isDark),
-              const SizedBox(height: 20),
-
-              _buildLabel("Password", labelColor),
-              _buildTextField(_passwordController, "••••••••", isDark, isPassword: true),
-              const SizedBox(height: 20),
-
-              _buildLabel("Restaurant access key", labelColor),
-              _buildTextField(_accessKeyController, "Enter key", isDark),
-
-              // ERROR MESSAGE
-              if (widget.error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 20),
-                  child: Text(
-                    widget.error!, 
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 13)
+              // STAFF TABS
+              if (isStaffMode)
+                Container(
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[200],
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                  padding: const EdgeInsets.all(4),
+                  child: Row(
+                    children: [
+                      _buildTab("Sign in", isDark),
+                      _buildTab("Team account", isDark),
+                      _buildTab("New restaurant", isDark),
+                    ],
                   ),
                 ),
 
-              const SizedBox(height: 50),
+              if (isStaffMode) const SizedBox(height: 40),
 
-              // 5. SIGN IN BUTTON
+              // TITLE
+              Text(
+                isStaffMode
+                    ? (activeTab == "Sign in"
+                        ? "Restaurant team sign in"
+                        : activeTab == "Team account"
+                            ? "Create team account"
+                            : "Join as a new restaurant")
+                    : (widget.isSignup ? "Create customer account" : "Welcome back"),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 30,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // SUBTITLE
+              Text(
+                isStaffMode
+                    ? (activeTab == "Sign in"
+                        ? "Use your work account and restaurant access key to enter your portal."
+                        : activeTab == "Team account"
+                            ? "Create a staff account for an existing restaurant."
+                            : "Create your restaurant and owner account together.")
+                    : (widget.isSignup
+                        ? "Set up your account and start exploring restaurants."
+                        : "Log in to continue your orders and bookings."),
+                style: TextStyle(
+                  color: labelColor,
+                  fontSize: 15,
+                  height: 1.5,
+                ),
+              ),
+
+              const SizedBox(height: 40),
+
+              // NAME FIELD
+              if ((!isStaffMode && widget.isSignup) ||
+                  (isStaffMode && activeTab != "Sign in")) ...[
+                _buildLabel(
+                  activeTab == "New restaurant" ? "Restaurant / Owner name" : "Full name",
+                  labelColor,
+                ),
+                _buildTextField(
+                  _nameController,
+                  activeTab == "New restaurant" ? "Restaurant name" : "Your name",
+                  isDark,
+                ),
+                const SizedBox(height: 20),
+              ],
+
+              // EMAIL
+              _buildLabel(
+                isStaffMode ? "Work email" : "Email",
+                labelColor,
+              ),
+              _buildTextField(
+                _emailController,
+                "email@example.com",
+                isDark,
+              ),
+              const SizedBox(height: 20),
+
+              // PASSWORD
+              _buildLabel(
+                "Password",
+                labelColor,
+              ),
+              _buildTextField(
+                _passwordController,
+                "••••••••",
+                isDark,
+                isPassword: true,
+              ),
+              const SizedBox(height: 20),
+
+              // ACCESS KEY
+              if (isStaffMode) ...[
+                _buildLabel(
+                  "Restaurant access key",
+                  labelColor,
+                ),
+                _buildTextField(
+                  _accessKeyController,
+                  "Enter access key",
+                  isDark,
+                ),
+                const SizedBox(height: 20),
+              ],
+
+              // ERROR
+              if (widget.error != null && widget.error!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Text(
+                    widget.error!,
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+
+              const SizedBox(height: 20),
+
+              // SUBMIT BUTTON
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFC2410C), // Orange-Red from design
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    elevation: 0,
+                    backgroundColor: const Color(0xFFC2410C),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
-                  // lib/features/restaurant_builder/screens/login_screen.dart
-// Inside the ElevatedButton...
-onPressed: widget.loading 
-  ? null 
-  : () {
-      print("Login Attempt: ${_emailController.text}"); // Check your console!
-      widget.onSubmit(
-        _emailController.text.trim(), 
-        _passwordController.text.trim(), 
-        null
-      );
-    },
-                  child: widget.loading 
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        "Sign in", 
-                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)
-                      ),
+                  onPressed: widget.loading
+                      ? null
+                      : () async {
+                          // FIXED LOGIC: Safely trim and map fields 
+                          final email = _emailController.text.trim();
+                          final password = _passwordController.text.trim();
+                          final name = _nameController.text.trim();
+                          final accessKey = _accessKeyController.text.trim();
+
+                          // CUSTOMER LOGIN
+                          if (!isStaffMode && !widget.isSignup) {
+                            await widget.onSubmit({
+                              "type": "customer_login",
+                              "email": email,
+                              "password": password,
+                            });
+                          }
+                          // CUSTOMER SIGNUP
+                          else if (!isStaffMode && widget.isSignup) {
+                            await widget.onSubmit({
+                              "type": "customer_signup",
+                              "name": name,
+                              "email": email,
+                              "password": password,
+                            });
+                          }
+                          // STAFF LOGIN
+                          else if (isStaffMode && activeTab == "Sign in") {
+                            await widget.onSubmit({
+                              "type": "staff_login",
+                              "email": email,
+                              "password": password,
+                              "access_key": accessKey,
+                            });
+                          }
+                          // TEAM ACCOUNT
+                          else if (isStaffMode && activeTab == "Team account") {
+                            await widget.onSubmit({
+                              "type": "team_signup",
+                              "name": name,
+                              "email": email,
+                              "password": password,
+                              "access_key": accessKey,
+                            });
+                          }
+                          // NEW RESTAURANT
+                          else if (isStaffMode && activeTab == "New restaurant") {
+                            await widget.onSubmit({
+                              "type": "restaurant_signup",
+                              "restaurant_name": name,
+                              "owner_name": name, 
+                              "email": email,
+                              "password": password,
+                              "access_key": accessKey,
+                            });
+                          }
+                        },
+                  child: widget.loading
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          isStaffMode
+                              ? (activeTab == "Sign in"
+                                  ? "Sign in"
+                                  : activeTab == "Team account"
+                                      ? "Create team account"
+                                      : "Join Platrick")
+                              : (widget.isSignup ? "Create account" : "Sign in"),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
+
+              const SizedBox(height: 20),
+
+              // CUSTOMER TOGGLE
+              if (!isStaffMode)
+                Center(
+                  child: TextButton(
+                    onPressed: widget.onToggle,
+                    child: Text(
+                      widget.isSignup
+                          ? "Already have an account? Sign in"
+                          : "New to Platrick? Create account",
+                      style: const TextStyle(
+                        color: Color(0xFF38BDF8),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ),
+                ),
+
               const SizedBox(height: 40),
             ],
           ),
@@ -185,26 +354,33 @@ onPressed: widget.loading
     );
   }
 
+  // TAB
   Widget _buildTab(String label, bool isDark) {
-    bool isActive = activeTab == label;
+    final isActive = activeTab == label;
+
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => activeTab = label),
+        onTap: () {
+          setState(() {
+            activeTab = label;
+          });
+        },
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: isActive ? (isDark ? Colors.white.withOpacity(0.1) : Colors.white) : Colors.transparent,
+            color: isActive
+                ? (isDark ? Colors.white.withOpacity(0.1) : Colors.white)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(25),
-            boxShadow: isActive && !isDark ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4)] : null,
           ),
           child: Center(
             child: Text(
-              label, 
+              label,
               style: TextStyle(
-                color: isActive ? (isDark ? Colors.white : Colors.black) : Colors.grey, 
-                fontSize: 12, 
-                fontWeight: FontWeight.bold
-              )
+                color: isActive ? (isDark ? Colors.white : Colors.black) : Colors.grey,
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
             ),
           ),
         ),
@@ -212,31 +388,48 @@ onPressed: widget.loading
     );
   }
 
+  // LABEL
   Widget _buildLabel(String text, Color color) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(text, style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold)),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint, bool isDark, {bool isPassword = false}) {
+  // INPUT
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint,
+    bool isDark, {
+    bool isPassword = false,
+  }) {
     return TextField(
       controller: controller,
       obscureText: isPassword,
-      style: TextStyle(color: isDark ? Colors.white : Colors.black87),
+      style: TextStyle(
+        color: isDark ? Colors.white : Colors.black87,
+      ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: isDark ? Colors.white12 : Colors.black26),
+        hintStyle: TextStyle(
+          color: isDark ? Colors.white24 : Colors.black26,
+        ),
         filled: true,
         fillColor: isDark ? Colors.white.withOpacity(0.03) : Colors.grey[100],
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8), 
-          borderSide: isDark ? BorderSide.none : BorderSide(color: Colors.grey[300]!)
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
         ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8), 
-          borderSide: isDark ? BorderSide.none : BorderSide(color: Colors.grey[300]!)
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide.none,
         ),
       ),
     );

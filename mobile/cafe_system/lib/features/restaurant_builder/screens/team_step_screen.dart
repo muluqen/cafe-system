@@ -76,7 +76,7 @@ class _TeamStepViewState extends State<TeamStepView> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedRole,
+                        initialValue: _selectedRole,
                         decoration: const InputDecoration(labelText: "Role", border: OutlineInputBorder()),
                         items: ['cashier', 'barista', 'manager'].map((role) {
                           return DropdownMenuItem(value: role, child: Text(role.toUpperCase()));
