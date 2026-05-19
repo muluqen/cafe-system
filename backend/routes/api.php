@@ -16,6 +16,9 @@ use App\Http\Controllers\Api\StaffShiftAssignmentController;
 use App\Http\Controllers\Api\TableController;
 use App\Http\Controllers\Api\TableSessionController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\RolePermissionController;
+use App\Http\Controllers\RecipeIngredientController;
+use App\Http\Controllers\CheckoutController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('auth/restaurants', [AuthController::class, 'restaurants']);
@@ -27,11 +30,20 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('auth/me', [AuthController::class, 'me']);
     Route::post('auth/logout', [AuthController::class, 'logout']);
 
+    Route::get('/preferences', [PreferenceController::class, 'index']);
+    Route::post('/preferences', [PreferenceController::class, 'store']);
+
+    Route::get('/role_permissions', [RolePermissionController::class, 'index']);
+    Route::post('/role_permissions', [RolePermissionController::class, 'store']);
+
+    Route::post('/checkout/process', [CheckoutController::class, 'process']);
+
     Route::apiResources([
         'users' => UserController::class,
         'restaurants' => RestaurantController::class,
         'menu_categories' => MenuCategoryController::class,
         'menu_items' => MenuItemController::class,
+        'recipe_ingredients' => RecipeIngredientController::class,
         'orders' => OrderController::class,
         'order_items' => OrderItemController::class,
         'order_status_history' => OrderStatusHistoryController::class,

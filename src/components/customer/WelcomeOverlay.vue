@@ -29,11 +29,11 @@ defineProps({
   },
   headline: {
     type: String,
-    default: "Your table is almost ready."
+    default: "Welcome to the Hub."
   },
   message: {
     type: String,
-    default: "Menus, orders, and your saved favorites are waiting for you."
+    default: "Systems are online. Discover your favorite flavors instantly."
   },
   restaurantName: {
     type: String,

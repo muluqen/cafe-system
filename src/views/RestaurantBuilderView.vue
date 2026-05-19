@@ -34,75 +34,98 @@
       </div>
     </section>
 
-    <BrandStep
-      v-if="currentStep.key === 'brand'"
-      :form="brandForm"
-      :new-color="newColor"
-      :saving="saving"
-      :error="error"
-      :message="message"
-      @update-field="updateBrandField"
-      @update-new-color="newColor = $event"
-      @add-color="addBrandColor"
-      @remove-color="removeBrandColor"
-      @set-primary="setPrimaryColor"
-      @save="saveBrandAndPreview"
-    />
+    <div class="step-transition-container">
+      <Transition name="fade-slide" mode="out-in">
+        <BrandStep
+          v-if="currentStep.key === 'brand'"
+          :form="brandForm"
+          :new-color="newColor"
+          :saving="saving"
+          :error="error"
+          :message="message"
+          @update-field="updateBrandField"
+          @update-new-color="newColor = $event"
+          @add-color="addBrandColor"
+          @remove-color="removeBrandColor"
+          @set-primary="setPrimaryColor"
+          @save="saveBrandAndPreview"
+        />
 
-    <PreviewStep
-      v-else-if="currentStep.key === 'preview'"
-      :form="brandForm"
-      :menu-items="menuItems"
-      :tables="tables"
-      @back="goToPreviousStep"
-      @next="goToNextStep"
-    />
+        <PreviewStep
+          v-else-if="currentStep.key === 'preview'"
+          :form="brandForm"
+          :menu-items="menuItems"
+          :tables="tables"
+          @back="goToPreviousStep"
+          @next="goToNextStep"
+        />
 
-    <MenuStep
-      v-else-if="currentStep.key === 'menu'"
-      :menu-form="menuForm"
-      :menu-items="menuItems"
-      :saving="saving"
-      :error="error"
-      @update-menu-form="updateMenuField"
-      @save-menu-item="saveMenuItem"
-      @remove-menu-item="removeMenuItem"
-      @back="goToPreviousStep"
-      @next="goToNextStep"
-    />
+        <MenuStep
+          v-else-if="currentStep.key === 'menu'"
+          :menu-form="menuForm"
+          :menu-items="menuItems"
+          :saving="saving"
+          :error="error"
+          @update-menu-form="updateMenuField"
+          @save-menu-item="saveMenuItem"
+          @remove-menu-item="removeMenuItem"
+          @back="goToPreviousStep"
+          @next="goToNextStep"
+        />
 
-    <TeamStep
-      v-else-if="currentStep.key === 'team'"
-      :staff-form="staffForm"
-      :staff-members="staffMembers"
-      :owner-id="auth.user?.id"
-      :saving="saving"
-      :error="error"
-      @update-staff-form="updateStaffField"
-      @save-staff-member="saveStaffMember"
-      @update-staff-role="updateStaffRole"
-      @remove-staff-member="removeStaffMember"
-      @back="goToPreviousStep"
-      @next="goToNextStep"
-    />
+        <TeamStep
+          v-else-if="currentStep.key === 'team'"
+          :staff-form="staffForm"
+          :staff-members="staffMembers"
+          :owner-id="auth.user?.id"
+          :saving="saving"
+          :error="error"
+          @update-staff-form="updateStaffField"
+          @save-staff-member="saveStaffMember"
+          @update-staff-role="updateStaffRole"
+          @remove-staff-member="removeStaffMember"
+          @back="goToPreviousStep"
+          @next="goToNextStep"
+        />
 
-    <TablesStep
-      v-else
-      :table-form="tableForm"
-      :tables="tables"
-      :saving="saving"
-      :error="error"
-      @update-table-form="updateTableField"
-      @save-table="saveTable"
-      @remove-table="removeTable"
-      @back="goToPreviousStep"
-      @finish="finishSetup"
-    />
+        <TablesStep
+          v-else
+          :table-form="tableForm"
+          :tables="tables"
+          :saving="saving"
+          :error="error"
+          @update-table-form="updateTableField"
+          @save-table="saveTable"
+          @remove-table="removeTable"
+          @back="goToPreviousStep"
+          @finish="finishSetup"
+        />
+      </Transition>
+    </div>
   </section>
 </template>
 
+<style scoped>
+.step-transition-container {
+  position: relative;
+  width: 100%;
+}
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(15px);
+}
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-15px);
+}
+</style>
+
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import BrandStep from "../components/restaurant-builder/BrandStep.vue";
 import MenuStep from "../components/restaurant-builder/MenuStep.vue";
@@ -165,6 +188,26 @@ const staffMembers = ref([]);
 const tables = ref([]);
 
 const currentStep = computed(() => steps[currentStepIndex.value]);
+
+let messageTimeout = null;
+watch(message, (newVal) => {
+  if (newVal) {
+    if (messageTimeout) clearTimeout(messageTimeout);
+    messageTimeout = setTimeout(() => {
+      message.value = "";
+    }, 4000);
+  }
+});
+
+let errorTimeout = null;
+watch(error, (newVal) => {
+  if (newVal) {
+    if (errorTimeout) clearTimeout(errorTimeout);
+    errorTimeout = setTimeout(() => {
+      error.value = "";
+    }, 5000);
+  }
+});
 
 function updateBrandField(field, value) {
   brandForm[field] = value;
@@ -248,17 +291,17 @@ async function loadRestaurant() {
 }
 
 async function loadSetupLists() {
-  const [categoriesRes, itemsRes, usersRes, tablesRes] = await Promise.all([
+  const results = await Promise.allSettled([
     api.get("/menu_categories", { params: { per_page: 200 } }),
     api.get("/menu_items", { params: { per_page: 200 } }),
     api.get("/users", { params: { per_page: 200 } }),
     api.get("/tables", { params: { per_page: 200 } })
   ]);
 
-  menuCategories.value = categoriesRes.data?.data || [];
-  menuItems.value = itemsRes.data?.data || [];
-  staffMembers.value = usersRes.data?.data || [];
-  tables.value = tablesRes.data?.data || [];
+  menuCategories.value = results[0].status === "fulfilled" ? results[0].value.data?.data || [] : [];
+  menuItems.value = results[1].status === "fulfilled" ? results[1].value.data?.data || [] : [];
+  staffMembers.value = results[2].status === "fulfilled" ? results[2].value.data?.data || [] : [];
+  tables.value = results[3].status === "fulfilled" ? results[3].value.data?.data || [] : [];
 }
 
 async function persistBrand(activate = brandForm.isActive) {

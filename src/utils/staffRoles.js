@@ -59,8 +59,8 @@ export const staffRoleDefinitions = {
     shortLabel: "Kitchen",
     workspaceLabel: "Kitchen workspace",
     description: "Focuses on preparation, ticket details, ingredients, and menu execution.",
-    landingLabel: "Orders",
-    defaultRoute: { name: "orders" }
+    landingLabel: "Kitchen Display",
+    defaultRoute: { name: "kds" }
   },
   inventory: {
     value: "inventory",

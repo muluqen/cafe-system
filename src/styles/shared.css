@@ -1,7 +1,7 @@
 .panel {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 26px;
+  border-radius: 12px;
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(18px);
   position: relative;
@@ -33,9 +33,10 @@
 
 .panel-title {
   margin: 0;
-  font-family: "Instrument Serif", serif;
-  font-size: clamp(1.5rem, 2vw, 2rem);
-  line-height: 1;
+  font-family: "Outfit", sans-serif;
+  font-weight: 800;
+  font-size: clamp(1.4rem, 2vw, 1.8rem);
+  line-height: 1.2;
 }
 
 .eyebrow {
@@ -68,16 +69,16 @@
 }
 
 .badge-strong {
-  background: rgba(255, 107, 53, 0.12);
-  color: #1A2A40;
+  background: var(--accent);
+  color: #ffffff;
 }
 
 .input {
   min-width: 220px;
-  padding: 11px 13px;
-  border: 1px solid rgba(96, 71, 50, 0.12);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-strong);
   color: var(--text-main);
   font: inherit;
   transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
@@ -85,29 +86,31 @@
 
 .input:focus {
   outline: none;
-  border-color: rgba(255, 122, 89, 0.4);
-  box-shadow: 0 0 0 4px rgba(255, 122, 89, 0.12);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .button {
-  border: none;
-  border-radius: 14px;
-  padding: 11px 16px;
-  background: #1A2A40;
-  color: #fffdf9;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 10px 18px;
+  background: var(--bg-sidebar);
+  color: #ffffff;
   font: inherit;
-  font-weight: 800;
+  font-family: "Outfit", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  box-shadow: 0 14px 28px rgba(26, 42, 64, 0.2);
-  transition: transform 180ms ease, box-shadow 180ms ease, opacity 180ms ease, filter 180ms ease;
+  box-shadow: var(--shadow-sm);
+  transition: all 180ms ease;
   position: relative;
   overflow: hidden;
 }
 
 .button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 34px rgba(26, 42, 64, 0.28);
-  background: #223754;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+  background: #101c2e;
 }
 
 .button::after {
@@ -125,10 +128,14 @@
 }
 
 .button-soft {
-  background: rgba(255, 255, 255, 0.82);
-  color: #1A2A40;
-  border: 1px solid rgba(26, 42, 64, 0.14);
+  background: transparent;
+  color: var(--bg-sidebar);
+  border: 1px solid var(--line);
   box-shadow: none;
+}
+.button-soft:hover {
+  background: var(--line);
+  color: var(--bg-sidebar);
 }
 
 html[data-theme="dark"] .button-soft {
@@ -185,14 +192,14 @@ html[data-theme="dark"] .button-soft {
 }
 
 .status-banner-success {
-  border-color: rgba(46, 204, 113, 0.26);
-  background: rgba(46, 204, 113, 0.12);
-  color: #18643b;
+  border-color: rgba(46, 204, 113, 0.4);
+  background: rgba(46, 204, 113, 0.1);
+  color: #1a7a40;
 }
 
 .status-banner-success .status-banner-dot {
-  background: #2ECC71;
-  box-shadow: 0 0 0 8px rgba(46, 204, 113, 0.16);
+  background: var(--olive);
+  box-shadow: 0 0 0 6px rgba(46, 204, 113, 0.2);
 }
 
 .modal-backdrop {
@@ -307,9 +314,10 @@ html[data-theme="dark"] .empty {
 
 .welcome-card h1 {
   margin: 0 0 10px;
-  font-family: "Instrument Serif", serif;
-  font-size: clamp(2.3rem, 5vw, 4.2rem);
-  line-height: 0.95;
+  font-family: "Outfit", sans-serif;
+  font-weight: 800;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.1;
 }
 
 .welcome-card p {
@@ -351,8 +359,8 @@ html[data-theme="dark"] .empty {
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: #FF6B35;
-  box-shadow: 0 0 0 8px rgba(255, 107, 53, 0.12);
+  background: var(--accent);
+  box-shadow: 0 0 0 8px var(--accent-soft);
 }
 
 .welcome-orb {
@@ -367,13 +375,13 @@ html[data-theme="dark"] .empty {
 .welcome-orb-a {
   top: 14%;
   left: 10%;
-  background: radial-gradient(circle, rgba(26, 42, 64, 0.38), transparent 68%);
+  background: radial-gradient(circle, rgba(230, 81, 0, 0.35), transparent 68%);
 }
 
 .welcome-orb-b {
   right: 12%;
   bottom: 10%;
-  background: radial-gradient(circle, rgba(255, 107, 53, 0.32), transparent 68%);
+  background: radial-gradient(circle, rgba(46, 125, 50, 0.32), transparent 68%);
 }
 
 .welcome-overlay-enter-active,

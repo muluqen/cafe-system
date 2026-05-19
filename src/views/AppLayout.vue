@@ -122,16 +122,26 @@ const navLinks = computed(() =>
         { name: "customer-account", label: "Account" }
       ]
     : [
+        ...(auth.staffRole === "manager" ? [{ name: "analytics", label: "Analytics & Security" }] : []),
         ...(auth.staffRole === "manager" ? [{ name: "restaurant-builder", label: "Site Builder" }] : []),
         ...(auth.staffRole === "manager" ? [{ name: "restaurant-pulse", label: "Customer Voice" }] : []),
-        ...(auth.staffRole === "manager" ? [] : [{ name: "dashboard", label: "Dashboard" }])
+        ...(["manager", "floor_manager", "server", "cashier"].includes(auth.staffRole) ? [{ name: "pos", label: "Point of Sale" }] : []),
+        ...(["manager", "kitchen", "barista"].includes(auth.staffRole) ? [{ name: "kds", label: "Kitchen Display" }] : [])
       ]
 );
 
 const visibleEntities = computed(() =>
   entities.filter((entity) => {
     if (!entity.roles.includes(auth.role)) return false;
+    
     if (auth.isRestaurant) {
+      if (auth.staffRole === "manager") return true;
+
+      // Check dynamic RBAC permissions first
+      const dynamicPerm = auth.rolePermissions.find(p => p.entity_key === entity.key && p.staff_role === auth.staffRole);
+      if (dynamicPerm) return !!dynamicPerm.can_read;
+
+      // Fallback to static config
       return !entity.staffRoles || entity.staffRoles.includes(auth.staffRole);
     }
     return true;
@@ -157,12 +167,12 @@ const staffRoleLabel = computed(() => {
 const welcomeHeadline = computed(() =>
   selectedRestaurantLabel.value === "your next stop"
     ? `Welcome, ${auth.user?.name || "guest"}.`
-    : `Welcome, ${auth.user?.name || "guest"}. ${selectedRestaurantLabel.value} is ready.`
+    : `Welcome, ${auth.user?.name || "guest"}. ${selectedRestaurantLabel.value} connected.`
 );
 const welcomeMessage = computed(() =>
   selectedRestaurantLabel.value === "your next stop"
-    ? "Choose a restaurant and step into a smoother ordering flow."
-    : "Pick your meal, tune every detail, and send it to the kitchen in one calm flow."
+    ? "Select a location to initiate your seamless ordering experience."
+    : "Your portal is ready. Order quickly, track instantly, and enjoy."
 );
 
 function toggleMobileMenu() {
@@ -196,9 +206,9 @@ async function logout() {
   router.push("/login");
 }
 
-onMounted(async () => {
-  await loadRestaurantsForCustomer();
+onMounted(() => {
   triggerCustomerWelcome();
+  loadRestaurantsForCustomer();
 });
 
 watch(() => route.fullPath, () => {

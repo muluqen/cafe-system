@@ -210,17 +210,18 @@
             </div>
             <div class="quick-grid">
               <button
-                v-for="ingredient in contextualIngredients"
-                :key="ingredient"
+                v-for="ingredientObj in contextualIngredients"
+                :key="ingredientObj.name"
                 class="quick-chip"
                 :class="{
-                  active: isIngredientSelected(ingredient, customizeMode),
+                  active: isIngredientSelected(ingredientObj.name, customizeMode),
                   remove: customizeMode === 'removals'
                 }"
                 type="button"
-                @click="toggleIngredientChoice(ingredient)"
+                @click="toggleIngredientChoice(ingredientObj.name)"
               >
-                {{ ingredient }}
+                {{ ingredientObj.name }}
+                <span v-if="customizeMode === 'additions' && ingredientObj.cost > 0" style="opacity: 0.7; font-size: 0.85em; margin-left: 4px;">(+${{ ingredientObj.cost.toFixed(2) }})</span>
               </button>
             </div>
             <p v-if="!contextualIngredients.length" class="muted">
@@ -228,7 +229,13 @@
             </p>
           </div>
 
-          <button class="button" type="button" @click="commitDraft">Add to order</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 1rem;">
+            <div>
+              <strong style="font-size: 1.25rem;">${{ customizedDraftPrice.toFixed(2) }}</strong>
+              <span class="muted"> per item</span>
+            </div>
+            <button class="button" type="button" @click="commitDraft">Add to order</button>
+          </div>
         </div>
       </div>
     </div>
@@ -586,9 +593,21 @@ const contextualIngredients = computed(() => {
     .filter((entry) => entry.name && entry.score > 0)
     .sort((left, right) => right.score - left.score)
     .slice(0, 10)
-    .map((entry) => entry.name);
+    .map((entry) => {
+      const fullIng = ingredients.value.find(i => i.name === entry.name);
+      return { name: entry.name, cost: Number(fullIng?.cost_per_unit || 0) };
+    });
 
-  return [...new Set(scored)];
+  return [...new Set(scored.map(s => JSON.stringify(s)))].map(s => JSON.parse(s));
+});
+
+const customizedDraftPrice = computed(() => {
+  let price = Number(draftItem.value?.price || 0);
+  for (const addName of draft.additions) {
+     const ing = ingredients.value.find(i => i.name === addName);
+     if (ing) price += Number(ing.cost_per_unit || 0);
+  }
+  return price;
 });
 const addPlaceholder = computed(() => {
   const text = `${draftItem.value?.name || ""} ${draftCategoryName.value}`.toLowerCase();
@@ -851,7 +870,7 @@ function commitDraft() {
     menu_item_id: draftItem.value.id,
     item_name: draftItem.value.name,
     quantity: Math.max(1, Number(draft.quantity) || 1),
-    unit_price: Number(draftItem.value.price || 0),
+    unit_price: customizedDraftPrice.value,
     additions: [...draft.additions],
     removals: [...draft.removals],
     note: draft.note.trim()
@@ -878,30 +897,20 @@ async function placeOrder() {
   try {
     const orderPayload = {
       table_id: selectedTableId.value || null,
-      status: "pending",
       subtotal: Number(subtotal.value.toFixed(2)),
       tax: Number(tax.value.toFixed(2)),
       total: Number(total.value.toFixed(2)),
-      notes: orderNote.value.trim() || null,
-      placed_at: new Date().toISOString()
+      cart: cart.value.map(entry => ({
+        menu_item_id: entry.menu_item_id,
+        name: entry.item_name,
+        quantity: entry.quantity,
+        price: Number(entry.unit_price.toFixed(2)),
+        notes: makeNote(entry) || null
+      }))
     };
 
-    const orderRes = await api.post("/orders", orderPayload);
-    const orderId = orderRes.data?.id;
-
-    await Promise.all(
-      cart.value.map((entry) =>
-        api.post("/order_items", {
-          order_id: orderId,
-          menu_item_id: entry.menu_item_id,
-          item_name: entry.item_name,
-          quantity: entry.quantity,
-          unit_price: Number(entry.unit_price.toFixed(2)),
-          line_total: Number((entry.unit_price * entry.quantity).toFixed(2)),
-          notes: makeNote(entry) || null
-        })
-      )
-    );
+    // Use our new automated inventory deduction checkout process
+    await api.post("/checkout/process", orderPayload);
 
     cart.value = [];
     orderNote.value = "";

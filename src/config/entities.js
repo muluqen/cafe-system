@@ -80,6 +80,14 @@ export const entities = [
     fields: ["name", "unit", "current_stock", "reorder_level", "cost_per_unit", "is_active"]
   },
   {
+    key: "recipe_ingredients",
+    label: "Recipe Links",
+    roles: ["restaurant"],
+    staffRoles: [...ownerOnly, "kitchen"],
+    mutateStaffRoles: ["manager", "kitchen"],
+    fields: ["menu_item_id", "ingredient_id", "quantity_required"]
+  },
+  {
     key: "inventory_transactions",
     label: "Inventory Transactions",
     roles: ["restaurant"],

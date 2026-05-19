@@ -15,7 +15,8 @@ export const useAuthStore = defineStore("authStore", {
     loading: false,
     error: "",
     publicRestaurants: [],
-    justLoggedIn: false
+    justLoggedIn: false,
+    rolePermissions: [],
   }),
   getters: {
     isAuthenticated: (state) => !!state.token,
@@ -78,6 +79,16 @@ export const useAuthStore = defineStore("authStore", {
         }
 
         this.persist();
+        this.user = data.user;
+
+        if (this.isRestaurant && this.user.restaurant_id) {
+          try {
+            const permRes = await api.get('/role_permissions');
+            this.rolePermissions = permRes.data || [];
+          } catch(e) {
+            console.error("Failed to load RBAC permissions");
+          }
+        }
         return data;
       } catch (error) {
         const errors = error?.response?.data?.errors;
@@ -98,6 +109,16 @@ export const useAuthStore = defineStore("authStore", {
       try {
         const { data } = await api.get("/auth/me");
         this.user = data;
+        
+        if (this.isRestaurant && this.user.restaurant_id) {
+          try {
+            const permRes = await api.get('/role_permissions');
+            this.rolePermissions = permRes.data || [];
+          } catch(e) {
+            console.error("Failed to load RBAC permissions");
+          }
+        }
+
         this.persist();
       } catch {
         this.logoutLocal();

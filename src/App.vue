@@ -1,6 +1,7 @@
 <template>
-  <button class="theme-toggle" type="button" @click="toggleTheme">
-    {{ theme === "dark" ? "Light" : "Dark" }}
+  <button class="theme-toggle" type="button" @click="toggleTheme" :title="theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+    <span v-if="theme === 'dark'">☀️</span>
+    <span v-else>🌙</span>
   </button>
   <RouterView />
 </template>
