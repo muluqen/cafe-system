@@ -152,10 +152,16 @@ async function checkout() {
       }))
     };
 
-    await api.post("/checkout/process", payload);
-    
-    cart.value = [];
-    alert("Order successfully sent! Inventory has been automatically deducted based on recipes.");
+const res = await api.post("/checkout/process", payload);
+
+cart.value = [];
+
+// Redirect to Chapa checkout page
+if (res.data.checkout_url) {
+  window.location.href = res.data.checkout_url;
+} else {
+  alert("Order sent! But no payment URL was returned.");
+}
   } catch (err) {
     error.value = "Failed to send order.";
   } finally {

@@ -25,6 +25,7 @@ Route::get('auth/restaurants', [AuthController::class, 'restaurants']);
 Route::post('auth/register', [AuthController::class, 'register']);
 Route::post('auth/register-restaurant', [AuthController::class, 'registerRestaurant']);
 Route::post('auth/login', [AuthController::class, 'login']);
+Route::get('/checkout/verify/{txRef}', [CheckoutController::class, 'verify']);
 
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('auth/me', [AuthController::class, 'me']);
