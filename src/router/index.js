@@ -15,8 +15,10 @@ import StaffLoginView from "../views/StaffLoginView.vue";
 import PosView from "../views/PosView.vue";
 import KitchenDisplayView from "../views/KitchenDisplayView.vue";
 import AnalyticsView from "../views/AnalyticsView.vue";
+import PaymentSuccessView from "../views/PaymentSuccessView.vue";
 import { entities } from "../config/entities";
 import { getStaffRoleMeta } from "../utils/staffRoles";
+
 
 function defaultRestaurantRoute(auth) {
   if (!auth.isRestaurant) {
@@ -57,6 +59,12 @@ const router = createRouter({
       component: StaffLoginView
     },
     {
+      path: '/payment/success',
+      name: 'payment-success',
+      component: PaymentSuccessView
+    },
+
+  {
       path: "/",
       component: AppLayout,
       meta: { requiresAuth: true },
