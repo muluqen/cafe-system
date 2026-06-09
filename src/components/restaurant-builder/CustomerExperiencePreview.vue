@@ -7,7 +7,7 @@
         </div>
         <div v-else class="customer-live-logo-fallback">{{ logoInitials }}</div>
         <div>
-          <span class="eyebrow customer-live-eyebrow">{{ form.name || "Your Restaurant" }} on Platrick</span>
+          <span class="eyebrow customer-live-eyebrow">{{ form.name || "Your Restaurant" }} on dinedirect</span>
           <h3>{{ form.headline || "Pick your spot, customize your meal, send it to the kitchen." }}</h3>
           <p class="muted">
             {{
@@ -41,10 +41,17 @@
             <span class="eyebrow">Menu</span>
             <h4>Available right now</h4>
           </div>
+          <span class="customer-live-badge">Fresh for this restaurant</span>
         </header>
 
         <div class="category-pills">
-          <button v-for="category in categories" :key="category" class="pill-btn" type="button">
+          <button
+            v-for="(category, index) in categories"
+            :key="category"
+            class="pill-btn"
+            :class="{ active: index === 0 }"
+            type="button"
+          >
             {{ category }}
           </button>
         </div>
@@ -79,7 +86,7 @@
           <article v-for="entry in orderPreview" :key="entry.id" class="cart-item">
             <div>
               <strong>{{ entry.name }}</strong>
-              <p class="muted">Standard preparation</p>
+              <p class="muted">{{ entry.note }}</p>
             </div>
             <div class="cart-qty">
               <button class="qty-btn" type="button">-</button>
@@ -143,7 +150,8 @@ const orderPreview = computed(() =>
     id: item.id || index,
     name: item.name,
     quantity: 1 + index,
-    price: Number(item.price || 0)
+    price: Number(item.price || 0),
+    note: index === 0 ? "Add: avocado | Note: dressing on the side" : "Standard preparation"
   }))
 );
 
@@ -159,8 +167,8 @@ const tax = computed(() => subtotal.value * 0.1);
 const total = computed(() => subtotal.value + tax.value);
 
 const themeVars = computed(() => ({
-  "--restaurant-brand": props.form.brandColor,
-  "--restaurant-brand-soft": `${props.form.brandColor}22`,
-  "--restaurant-brand-gradient": `linear-gradient(135deg, ${(props.form.brandColors || [props.form.brandColor]).join(", ")})`
+  "--restaurant-brand": props.form.brandColor || "#1A2A40",
+  "--restaurant-brand-soft": `${props.form.brandColor || "#1A2A40"}22`,
+  "--restaurant-brand-gradient": `linear-gradient(135deg, ${(props.form.brandColors || [props.form.brandColor || "#1A2A40"]).join(", ")})`
 }));
 </script>

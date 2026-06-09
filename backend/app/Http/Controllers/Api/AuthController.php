@@ -35,6 +35,8 @@ class AuthController extends Controller
             'restaurant_id' => ['nullable', 'integer', 'exists:restaurants,id'],
         ]);
 
+        $validated['email'] = strtolower(trim($validated['email']));
+
         $isRestaurantAccess = $this->isRestaurantAccess($validated['access_key'] ?? null);
 
         if ($isRestaurantAccess && empty($validated['restaurant_id'])) {
@@ -68,6 +70,11 @@ class AuthController extends Controller
             'address' => ['nullable', 'string', 'max:255'],
         ]);
 
+        $validated['email'] = strtolower(trim($validated['email']));
+        $validated['restaurant_email'] = isset($validated['restaurant_email'])
+            ? strtolower(trim((string) $validated['restaurant_email']))
+            : null;
+
         $this->isRestaurantAccess($validated['access_key']);
 
         $user = DB::transaction(function () use ($validated): User {
@@ -77,7 +84,7 @@ class AuthController extends Controller
                 'phone' => $validated['phone'] ?: null,
                 'email' => $validated['restaurant_email'] ?: $validated['email'],
                 'address' => $validated['address'] ?: null,
-                'is_active' => true,
+                'is_active' => false,
             ]);
 
             return User::query()->create([
@@ -101,7 +108,10 @@ class AuthController extends Controller
             'access_key' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $user = User::query()->where('email', $validated['email'])->first();
+        $email = strtolower(trim($validated['email']));
+        $user = User::query()
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->first();
         if (!$user || !Hash::check($validated['password'], $user->password)) {
             throw ValidationException::withMessages(['email' => 'Invalid credentials']);
         }

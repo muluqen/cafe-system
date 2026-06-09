@@ -2,7 +2,7 @@
   <section class="auth-shell login-pro staff-shell">
     <div class="login-grid staff-grid join-grid">
       <aside class="login-showcase panel staff-showcase">
-        <p class="eyebrow">Platrick Team</p>
+        <p class="eyebrow">DineDirect Team</p>
         <h1>Open your restaurant workspace the right way.</h1>
         <p class="muted">
           Existing teams can sign in fast. New restaurants can join from here and instantly get a
@@ -29,6 +29,14 @@
         <div class="login-head">
           <span class="auth-dot" />
           <RouterLink class="staff-link" :to="{ name: 'login' }">Customer login</RouterLink>
+        </div>
+
+        <div v-if="successMessage" class="status-banner status-banner-success auth-status-banner">
+          <span class="status-banner-dot" />
+          <div>
+            <strong>Welcome to DineDirect</strong>
+            <p>{{ successMessage }}</p>
+          </div>
         </div>
 
         <div class="staff-mode-switch">
@@ -74,7 +82,7 @@
 
         <div v-else-if="mode === 'team'">
           <h2>Create team account</h2>
-          <p class="muted">For staff joining an existing restaurant already on Platrick.</p>
+          <p class="muted">For staff joining an existing restaurant already on DineDirect.</p>
 
           <form class="auth-form" @submit.prevent="submitTeamSignup">
             <label>
@@ -181,7 +189,7 @@
             <p v-if="auth.error" class="error-text">{{ auth.error }}</p>
 
             <button class="button auth-button" type="submit" :disabled="auth.loading">
-              {{ auth.loading ? "Setting up..." : "Join Platrick" }}
+              {{ auth.loading ? "Setting up..." : "Join DineDirect" }}
             </button>
           </form>
         </div>
@@ -198,6 +206,7 @@ import { useAuthStore } from "../stores/authStore";
 const auth = useAuthStore();
 const router = useRouter();
 const mode = ref("login");
+const successMessage = ref("");
 const modeOptions = [
   { value: "login", label: "Sign in" },
   { value: "team", label: "Team account" },
@@ -231,6 +240,7 @@ const restaurantForm = reactive({
 
 function clearErrors() {
   auth.error = "";
+  successMessage.value = "";
 }
 
 function setMode(nextMode) {
@@ -240,9 +250,9 @@ function setMode(nextMode) {
 
 async function submitLogin() {
   await auth.login({
-    email: loginForm.email,
+    email: loginForm.email.trim(),
     password: loginForm.password,
-    access_key: loginForm.access_key
+    access_key: loginForm.access_key.trim()
   });
 
   await router.push({ name: "dashboard" });
@@ -251,9 +261,9 @@ async function submitLogin() {
 async function submitTeamSignup() {
   await auth.register({
     name: teamForm.name,
-    email: teamForm.email,
+    email: teamForm.email.trim(),
     password: teamForm.password,
-    access_key: teamForm.access_key,
+    access_key: teamForm.access_key.trim(),
     restaurant_id: Number(teamForm.restaurant_id)
   });
 
@@ -261,17 +271,22 @@ async function submitTeamSignup() {
 }
 
 async function submitRestaurantSignup() {
+  const restaurantName = restaurantForm.restaurant_name;
   await auth.registerRestaurant({
     restaurant_name: restaurantForm.restaurant_name,
     owner_name: restaurantForm.owner_name,
-    email: restaurantForm.email,
+    email: restaurantForm.email.trim(),
     password: restaurantForm.password,
-    access_key: restaurantForm.access_key,
+    access_key: restaurantForm.access_key.trim(),
     phone: restaurantForm.phone || null,
-    restaurant_email: restaurantForm.restaurant_email || null,
+    restaurant_email: restaurantForm.restaurant_email.trim() || null,
     address: restaurantForm.address || null
   });
 
+  successMessage.value = `${restaurantName} is fully registered. Your owner workspace is ready for setup.`;
+  auth.setRestaurantWelcomeNotice(
+    `Welcome to DineDirect. ${restaurantName} has been registered successfully and your restaurant workspace is ready.`
+  );
   await router.push({ name: "dashboard" });
 }
 

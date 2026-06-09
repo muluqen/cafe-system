@@ -29,30 +29,30 @@ class CafeSystemSeeder extends Seeder
     {
         $restaurants = collect([
             [
-                'name' => 'Cafe Aurora Downtown',
-                'slug' => 'cafe-aurora-downtown',
+                'name' => 'Addis Ababa Cafe',
+                'slug' => 'addis-ababa-cafe',
                 'phone' => '+1-555-1000',
-                'email' => 'downtown@cafeaurora.local',
+                'email' => 'hello@addiscafe.local',
                 'address' => '123 Main St',
                 'is_active' => true,
             ],
             [
-                'name' => 'Cafe Aurora Riverside',
-                'slug' => 'cafe-aurora-riverside',
+                'name' => 'Lalibela Restaurant',
+                'slug' => 'lalibela-restaurant',
                 'phone' => '+1-555-2000',
-                'email' => 'riverside@cafeaurora.local',
+                'email' => 'contact@lalibelarestaurant.local',
                 'address' => '42 River Ave',
                 'is_active' => true,
             ],
-        ])->map(fn (array $restaurant) => Restaurant::query()->create($restaurant));
+        ])->map(fn(array $restaurant) => Restaurant::query()->create($restaurant));
 
         $staffUsers = collect([
-            ['name' => 'Downtown Manager', 'email' => 'downtown.manager@cafesystem.local', 'restaurant_idx' => 0, 'staff_role' => 'manager'],
-            ['name' => 'Downtown Cashier', 'email' => 'downtown.cashier@cafesystem.local', 'restaurant_idx' => 0, 'staff_role' => 'cashier'],
-            ['name' => 'Downtown Barista', 'email' => 'downtown.barista@cafesystem.local', 'restaurant_idx' => 0, 'staff_role' => 'barista'],
-            ['name' => 'Riverside Manager', 'email' => 'riverside.manager@cafesystem.local', 'restaurant_idx' => 1, 'staff_role' => 'manager'],
-            ['name' => 'Riverside Cashier', 'email' => 'riverside.cashier@cafesystem.local', 'restaurant_idx' => 1, 'staff_role' => 'cashier'],
-            ['name' => 'Riverside Barista', 'email' => 'riverside.barista@cafesystem.local', 'restaurant_idx' => 1, 'staff_role' => 'barista'],
+            ['name' => 'Addis Manager', 'email' => 'manager@addiscafe.local', 'restaurant_idx' => 0, 'staff_role' => 'manager'],
+            ['name' => 'Addis Cashier', 'email' => 'cashier@addiscafe.local', 'restaurant_idx' => 0, 'staff_role' => 'cashier'],
+            ['name' => 'Addis Barista', 'email' => 'barista@addiscafe.local', 'restaurant_idx' => 0, 'staff_role' => 'barista'],
+            ['name' => 'Lalibela Manager', 'email' => 'manager@lalibelarestaurant.local', 'restaurant_idx' => 1, 'staff_role' => 'manager'],
+            ['name' => 'Lalibela Cashier', 'email' => 'cashier@lalibelarestaurant.local', 'restaurant_idx' => 1, 'staff_role' => 'cashier'],
+            ['name' => 'Lalibela Barista', 'email' => 'barista@lalibelarestaurant.local', 'restaurant_idx' => 1, 'staff_role' => 'barista'],
         ])->map(function (array $user) use ($restaurants) {
             return User::query()->create([
                 'name' => $user['name'],
@@ -68,7 +68,7 @@ class CafeSystemSeeder extends Seeder
             ['name' => 'Customer One', 'email' => 'customer1@cafesystem.local'],
             ['name' => 'Customer Two', 'email' => 'customer2@cafesystem.local'],
             ['name' => 'Customer Three', 'email' => 'customer3@cafesystem.local'],
-        ])->map(fn (array $user) => User::query()->create([
+        ])->map(fn(array $user) => User::query()->create([
             ...$user,
             'password' => Hash::make('password123'),
             'role' => 'customer',
@@ -92,10 +92,10 @@ class CafeSystemSeeder extends Seeder
 
         foreach ($restaurants as $restaurant) {
             $categories = collect([
-                ['name' => 'Coffee', 'display_order' => 1],
-                ['name' => 'Pastries', 'display_order' => 2],
-                ['name' => 'Sandwiches', 'display_order' => 3],
-            ])->map(fn (array $category) => MenuCategory::query()->create([
+                ['name' => 'Mains (Wots & Tibs)', 'display_order' => 1],
+                ['name' => 'Vegetarian (Yetsom)', 'display_order' => 2],
+                ['name' => 'Drinks', 'display_order' => 3],
+            ])->map(fn(array $category) => MenuCategory::query()->create([
                 'restaurant_id' => $restaurant->id,
                 'name' => $category['name'],
                 'display_order' => $category['display_order'],
@@ -103,13 +103,14 @@ class CafeSystemSeeder extends Seeder
             ]));
 
             $menuItems = collect([
-                ['category' => 'Coffee', 'name' => 'Espresso', 'price' => 3.50, 'prep' => 3],
-                ['category' => 'Coffee', 'name' => 'Latte', 'price' => 4.75, 'prep' => 5],
-                ['category' => 'Coffee', 'name' => 'Cold Brew', 'price' => 4.25, 'prep' => 4],
-                ['category' => 'Pastries', 'name' => 'Butter Croissant', 'price' => 3.25, 'prep' => 2],
-                ['category' => 'Pastries', 'name' => 'Blueberry Muffin', 'price' => 3.10, 'prep' => 2],
-                ['category' => 'Sandwiches', 'name' => 'Turkey Club', 'price' => 8.90, 'prep' => 8],
-                ['category' => 'Sandwiches', 'name' => 'Caprese Panini', 'price' => 8.50, 'prep' => 7],
+                ['category' => 'Mains (Wots & Tibs)', 'name' => 'Doro Wat', 'price' => 18.50, 'prep' => 25],
+                ['category' => 'Mains (Wots & Tibs)', 'name' => 'Beef Tibs', 'price' => 19.00, 'prep' => 15],
+                ['category' => 'Mains (Wots & Tibs)', 'name' => 'Kitfo', 'price' => 22.00, 'prep' => 12],
+                ['category' => 'Vegetarian (Yetsom)', 'name' => 'Shiro Wat', 'price' => 14.50, 'prep' => 10],
+                ['category' => 'Vegetarian (Yetsom)', 'name' => 'Misir Wat', 'price' => 15.00, 'prep' => 10],
+                ['category' => 'Vegetarian (Yetsom)', 'name' => 'Gomen', 'price' => 13.50, 'prep' => 8],
+                ['category' => 'Drinks', 'name' => 'Ethiopian Coffee', 'price' => 4.50, 'prep' => 10],
+                ['category' => 'Drinks', 'name' => 'Tej (Honey Wine)', 'price' => 8.00, 'prep' => 2],
             ])->map(function (array $item) use ($categories, $restaurant) {
                 $category = $categories->firstWhere('name', $item['category']);
 
@@ -126,12 +127,13 @@ class CafeSystemSeeder extends Seeder
             });
 
             $ingredients = collect([
-                ['name' => 'Coffee Beans', 'unit' => 'kg', 'stock' => 24.500, 'reorder' => 8.000, 'cost' => 18.40],
-                ['name' => 'Milk', 'unit' => 'l', 'stock' => 60.000, 'reorder' => 20.000, 'cost' => 1.75],
-                ['name' => 'Flour', 'unit' => 'kg', 'stock' => 40.000, 'reorder' => 12.000, 'cost' => 1.20],
-                ['name' => 'Turkey Slices', 'unit' => 'kg', 'stock' => 16.000, 'reorder' => 5.000, 'cost' => 9.35],
-                ['name' => 'Tomatoes', 'unit' => 'kg', 'stock' => 18.000, 'reorder' => 6.000, 'cost' => 2.40],
-            ])->map(fn (array $ingredient) => Ingredient::query()->create([
+                ['name' => 'Teff Flour', 'unit' => 'kg', 'stock' => 50.000, 'reorder' => 15.000, 'cost' => 4.50],
+                ['name' => 'Berbere Spice', 'unit' => 'kg', 'stock' => 10.000, 'reorder' => 3.000, 'cost' => 12.00],
+                ['name' => 'Niter Kibbeh', 'unit' => 'kg', 'stock' => 8.000, 'reorder' => 2.000, 'cost' => 18.00],
+                ['name' => 'Chicken', 'unit' => 'kg', 'stock' => 30.000, 'reorder' => 10.000, 'cost' => 5.50],
+                ['name' => 'Beef', 'unit' => 'kg', 'stock' => 25.000, 'reorder' => 8.000, 'cost' => 8.00],
+                ['name' => 'Coffee Beans (Yirgacheffe)', 'unit' => 'kg', 'stock' => 15.000, 'reorder' => 5.000, 'cost' => 15.00],
+            ])->map(fn(array $ingredient) => Ingredient::query()->create([
                 'restaurant_id' => $restaurant->id,
                 'name' => $ingredient['name'],
                 'unit' => $ingredient['unit'],
@@ -173,7 +175,7 @@ class CafeSystemSeeder extends Seeder
                 $ingredient->update(['current_stock' => $balance]);
             }
 
-            $tables = collect(range(1, 6))->map(fn (int $index) => DiningTable::query()->create([
+            $tables = collect(range(1, 6))->map(fn(int $index) => DiningTable::query()->create([
                 'restaurant_id' => $restaurant->id,
                 'name' => 'T-' . $index,
                 'capacity' => Arr::random([2, 2, 4, 4, 6]),
@@ -193,7 +195,7 @@ class CafeSystemSeeder extends Seeder
                     'starts_at' => Carbon::today()->setTime(14, 0),
                     'ends_at' => Carbon::today()->setTime(22, 0),
                 ],
-            ])->map(fn (array $shift) => Shift::query()->create([
+            ])->map(fn(array $shift) => Shift::query()->create([
                 'restaurant_id' => $restaurant->id,
                 'name' => $shift['name'],
                 'starts_at' => $shift['starts_at'],

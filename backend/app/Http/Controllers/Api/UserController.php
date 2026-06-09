@@ -41,13 +41,17 @@ class UserController extends BaseApiController
             ],
             'password' => [$updating ? 'sometimes' : 'required', 'string', 'min:8'],
             'role' => ['nullable', 'in:restaurant,customer'],
-            'staff_role' => ['nullable', 'in:manager,cashier,barista'],
+            'staff_role' => ['nullable', 'in:manager,floor_manager,host,server,cashier,barista,kitchen,inventory'],
             'restaurant_id' => ['nullable', 'exists:restaurants,id'],
         ];
     }
 
     protected function mutateValidated(array $validated, Request $request, ?int $restaurantId, bool $updating = false): array
     {
+        if (isset($validated['email'])) {
+            $validated['email'] = strtolower(trim((string) $validated['email']));
+        }
+
         if (isset($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         }
@@ -59,7 +63,7 @@ class UserController extends BaseApiController
 
         if ($request->user()->role === 'restaurant') {
             $validated['role'] = 'restaurant';
-            $validated['staff_role'] = $validated['staff_role'] ?? 'cashier';
+            $validated['staff_role'] = $validated['staff_role'] ?? 'server';
             $validated['restaurant_id'] = $request->user()->restaurant_id;
 
             // Prevent staff from demoting their own role by mistake.

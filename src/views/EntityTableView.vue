@@ -10,7 +10,7 @@
           v-model="search"
           class="input"
           type="search"
-          placeholder="Search (uses ?search=)"
+          :placeholder="`Search ${entity.label.toLowerCase()}...`"
           @keyup.enter="load"
         />
         <button class="button" :disabled="store.loading" @click="load">
@@ -40,13 +40,20 @@
       </div>
 
       <p v-if="store.error" class="muted">{{ store.error }}</p>
+      <div v-if="successMessage" class="status-banner status-banner-success entity-status-banner" style="margin-bottom: 1rem;">
+        <span class="status-banner-dot" />
+        <div>
+          <strong>Done</strong>
+          <p>{{ successMessage }}</p>
+        </div>
+      </div>
 
-      <div v-else-if="rows.length" class="table-wrap">
+      <div v-if="rows.length" class="table-wrap">
         <table class="data-table">
           <thead>
             <tr>
               <th v-for="key in columns" :key="key">
-                {{ key }}
+                {{ labelize(key) }}
               </th>
               <th>Actions</th>
             </tr>
@@ -54,7 +61,7 @@
           <tbody>
             <tr v-for="row in rows" :key="row.id || row.uuid || JSON.stringify(row)">
               <td v-for="key in columns" :key="`${row.id || row.uuid}-${key}`">
-                {{ formatCell(row[key]) }}
+                {{ formatRowValue(key, row[key]) }}
               </td>
               <td>
                 <div class="row-actions">
@@ -76,7 +83,7 @@
       </div>
 
       <div v-else class="empty">
-        No data yet. Seed data in Laravel or verify API auth/permissions.
+        No data yet. 
       </div>
     </div>
 
@@ -88,9 +95,40 @@
         </div>
         <div class="content-pad">
           <form class="crud-form" @submit.prevent="save">
+            <div v-if="formError" class="status-banner status-banner-error" style="margin-bottom: 1rem; color: #d32f2f; background: #ffebee;">
+              <span class="status-banner-dot" style="background: #d32f2f;" />
+              <div>
+                <strong>Error</strong>
+                <p style="color: #c62828;">{{ formError }}</p>
+              </div>
+            </div>
+
             <label v-for="field in editableFields" :key="field">
-              {{ field }}
-              <input v-model="form[field]" class="input" type="text" />
+              {{ labelize(field) }}
+              
+              <select v-if="field === 'staff_role'" v-model="form[field]" class="input">
+                <option value="manager">Owner</option>
+                <option v-for="role in staffRoleOptions" :key="role.value" :value="role.value">
+                  {{ role.label }}
+                </option>
+              </select>
+
+              <select v-else-if="field.endsWith('_id')" v-model="form[field]" class="input">
+                <option value="">-- Select --</option>
+                <option v-for="opt in getOptionsForField(field)" :key="opt.id" :value="opt.id">
+                  {{ opt.name || opt.title || opt.label || `ID: #${opt.id}` }}
+                </option>
+              </select>
+
+              <input v-else-if="field.startsWith('is_') || field.startsWith('has_')" v-model="form[field]" type="checkbox" />
+
+              <textarea v-else-if="field === 'description' || field === 'notes' || field === 'note'" v-model="form[field]" class="input" rows="3"></textarea>
+
+              <input v-else-if="['price', 'amount', 'total', 'subtotal', 'tax', 'quantity', 'capacity', 'guest_count'].includes(field) || field.endsWith('_minutes')" v-model="form[field]" class="input" type="number" step="any" />
+
+              <input v-else-if="field.endsWith('_at')" v-model="form[field]" class="input" type="datetime-local" />
+
+              <input v-else v-model="form[field]" class="input" type="text" />
             </label>
             <button class="button" :disabled="store.saving">
               {{ store.saving ? "Saving..." : "Save" }}
@@ -104,8 +142,10 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from "vue";
+import api from "../services/api";
 import { useEntityStore } from "../stores/entityStore";
 import { useAuthStore } from "../stores/authStore";
+import { getStaffRoleMeta, staffRoleOptions } from "../utils/staffRoles";
 
 const props = defineProps({
   entity: {
@@ -120,15 +160,53 @@ const search = ref("");
 const formOpen = ref(false);
 const editId = ref(null);
 const form = ref({});
+const successMessage = ref("");
+const formError = ref("");
+const optionsCache = ref({});
+
+async function loadOptionsForField(field) {
+  if (!field.endsWith('_id')) return;
+  
+  let endpoint = field.replace('_id', 's');
+  if (field === 'menu_category_id') endpoint = 'menu_categories';
+  if (field === 'inventory_id') endpoint = 'inventory_transactions';
+  
+  if (optionsCache.value[field]) return;
+  
+  try {
+    const res = await api.get(`/${endpoint}`, { params: { per_page: 200 } });
+    optionsCache.value[field] = res.data?.data || res.data || [];
+  } catch (err) {
+    console.warn("Failed to load options for", field, err);
+    optionsCache.value[field] = [];
+  }
+}
+
+function getOptionsForField(field) {
+  return optionsCache.value[field] || [];
+}
 
 const rows = computed(() => store.byEntity[props.entity.key] || []);
+const hiddenColumns = ["created_at", "updated_at", "deleted_at", "restaurant"];
+
+const preferredFields = computed(() =>
+  props.entity.fields?.length
+    ? props.entity.fields
+    : []
+);
+
 const columns = computed(() => {
   const first = rows.value[0];
   if (!first || typeof first !== "object") {
     return [];
   }
 
-  return Object.keys(first).slice(0, 8);
+  const preferred = ["id", ...preferredFields.value];
+  const available = Object.keys(first).filter((key) => !hiddenColumns.includes(key));
+  const ordered = preferred.filter((key) => available.includes(key));
+  const extras = available.filter((key) => !ordered.includes(key) && typeof first[key] !== "object");
+
+  return [...ordered, ...extras].slice(0, 7);
 });
 const editableFields = computed(() =>
   props.entity.fields?.length
@@ -136,9 +214,11 @@ const editableFields = computed(() =>
     : columns.value.filter((field) => !["id", "created_at", "updated_at"].includes(field))
 );
 const canMutateForStaff = computed(() => {
-  if (!auth.isRestaurant) {
-    return true;
-  }
+  if (!auth.isRestaurant) return true;
+  if (auth.staffRole === 'manager') return true;
+
+  const dynamicPerm = auth.rolePermissions.find(p => p.entity_key === props.entity.key && p.staff_role === auth.staffRole);
+  if (dynamicPerm) return !!dynamicPerm.can_write;
 
   return (
     !props.entity.mutateStaffRoles ||
@@ -167,15 +247,38 @@ function formatCell(value) {
     return "-";
   }
 
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  if (typeof value === "string" && value.includes("T") && !Number.isNaN(Date.parse(value))) {
+    return new Date(value).toLocaleString();
+  }
+
   if (typeof value === "object") {
-    return JSON.stringify(value);
+    return value.name || value.title || value.label || "#linked";
   }
 
   return String(value);
 }
 
+function formatRowValue(key, value) {
+  if (key === "staff_role") {
+    return getStaffRoleMeta(value || "manager").label;
+  }
+
+  return formatCell(value);
+}
+
+function labelize(value) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 function load() {
-  store.fetchEntities(props.entity.key, search.value.trim());
+  successMessage.value = "";
+  return store.fetchEntities(props.entity.key, search.value.trim());
 }
 
 function canEdit(row) {
@@ -193,16 +296,36 @@ function canEdit(row) {
 
 function startCreate() {
   editId.value = null;
-  form.value = Object.fromEntries(editableFields.value.map((field) => [field, ""]));
+  formError.value = "";
+  form.value = Object.fromEntries(
+    editableFields.value.map((field) => {
+      if (field.startsWith('is_') || field.startsWith('has_')) return [field, false];
+      return [field, ""];
+    })
+  );
+  if (Object.prototype.hasOwnProperty.call(form.value, "staff_role")) {
+    form.value.staff_role = "server";
+  }
   formOpen.value = true;
+  editableFields.value.filter(f => f.endsWith('_id')).forEach(loadOptionsForField);
 }
 
 function startEdit(row) {
   editId.value = row.id;
+  formError.value = "";
   form.value = Object.fromEntries(
-    editableFields.value.map((field) => [field, row[field] === null ? "" : String(row[field])])
+    editableFields.value.map((field) => {
+      if (field.startsWith('is_') || field.startsWith('has_')) {
+        return [field, !!row[field]];
+      }
+      if (field.endsWith('_at') && row[field]) {
+        return [field, String(row[field]).substring(0, 16)];
+      }
+      return [field, row[field] === null ? "" : String(row[field])];
+    })
   );
   formOpen.value = true;
+  editableFields.value.filter(f => f.endsWith('_id')).forEach(loadOptionsForField);
 }
 
 function closeForm() {
@@ -218,18 +341,23 @@ function normalizePayload(source) {
       return;
     }
 
-    if (value === "true") {
+    if (value === "true" || value === true) {
       payload[key] = true;
       return;
     }
 
-    if (value === "false") {
+    if (value === "false" || value === false) {
       payload[key] = false;
       return;
     }
 
-    if (!Number.isNaN(Number(value)) && String(value).trim() !== "") {
-      payload[key] = Number(value);
+    if (['price', 'amount', 'total', 'subtotal', 'tax', 'quantity', 'capacity', 'guest_count'].includes(key) || key.endsWith('_minutes')) {
+      if (value !== null && value !== "") payload[key] = Number(value);
+      return;
+    }
+    
+    if (key.endsWith('_id') && key !== 'restaurant_id') {
+      if (value !== null && value !== "") payload[key] = Number(value);
       return;
     }
 
@@ -239,15 +367,36 @@ function normalizePayload(source) {
   return payload;
 }
 
+let successTimeout = null;
+function showSuccessMessage(msg) {
+  successMessage.value = msg;
+  if (successTimeout) clearTimeout(successTimeout);
+  successTimeout = setTimeout(() => {
+    successMessage.value = "";
+  }, 3000);
+}
+
 async function save() {
-  const payload = normalizePayload(form.value);
-  if (editId.value) {
-    await store.updateEntity(props.entity.key, editId.value, payload);
-  } else {
-    await store.createEntity(props.entity.key, payload);
+  formError.value = "";
+  try {
+    const payload = normalizePayload(form.value);
+    
+    if (auth.isRestaurant && auth.user?.restaurant_id) {
+      payload.restaurant_id = auth.user.restaurant_id;
+    }
+
+    const action = editId.value ? "updated" : "created";
+    if (editId.value) {
+      await store.updateEntity(props.entity.key, editId.value, payload);
+    } else {
+      await store.createEntity(props.entity.key, payload);
+    }
+    await load();
+    showSuccessMessage(`${props.entity.label} ${action} successfully.`);
+    closeForm();
+  } catch (err) {
+    formError.value = err?.response?.data?.message || err?.message || "An error occurred while saving. Please check your inputs.";
   }
-  closeForm();
-  load();
 }
 
 async function remove(row) {
@@ -255,7 +404,8 @@ async function remove(row) {
     return;
   }
   await store.deleteEntity(props.entity.key, row.id);
-  load();
+  await load();
+  showSuccessMessage(`${props.entity.label} removed successfully.`);
 }
 
 watch(

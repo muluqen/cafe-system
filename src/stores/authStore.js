@@ -4,15 +4,19 @@ import api from "../services/api";
 const TOKEN_KEY = "cafe_auth_token";
 const USER_KEY = "cafe_auth_user";
 const RESTAURANT_KEY = "cafe_selected_restaurant_id";
+const RESTAURANT_WELCOME_KEY = "cafe_restaurant_welcome_notice";
 
 export const useAuthStore = defineStore("authStore", {
   state: () => ({
     token: localStorage.getItem(TOKEN_KEY) || "",
     user: JSON.parse(localStorage.getItem(USER_KEY) || "null"),
     selectedRestaurantId: localStorage.getItem(RESTAURANT_KEY) || "",
+    restaurantWelcomeNotice: sessionStorage.getItem(RESTAURANT_WELCOME_KEY) || "",
     loading: false,
     error: "",
-    publicRestaurants: []
+    publicRestaurants: [],
+    justLoggedIn: false,
+    rolePermissions: [],
   }),
   getters: {
     isAuthenticated: (state) => !!state.token,
@@ -40,6 +44,12 @@ export const useAuthStore = defineStore("authStore", {
       } else {
         localStorage.removeItem(RESTAURANT_KEY);
       }
+
+      if (this.restaurantWelcomeNotice) {
+        sessionStorage.setItem(RESTAURANT_WELCOME_KEY, this.restaurantWelcomeNotice);
+      } else {
+        sessionStorage.removeItem(RESTAURANT_WELCOME_KEY);
+      }
     },
     async loadPublicRestaurants() {
       const { data } = await api.get("/auth/restaurants");
@@ -62,12 +72,23 @@ export const useAuthStore = defineStore("authStore", {
         const { data } = await api.post(endpoint, payload);
         this.token = data.token;
         this.user = data.user;
+        this.justLoggedIn = true;
 
         if (this.user?.role === "restaurant") {
           this.selectedRestaurantId = String(this.user.restaurant_id || "");
         }
 
         this.persist();
+        this.user = data.user;
+
+        if (this.isRestaurant && this.user.restaurant_id) {
+          try {
+            const permRes = await api.get('/role_permissions');
+            this.rolePermissions = permRes.data || [];
+          } catch(e) {
+            console.error("Failed to load RBAC permissions");
+          }
+        }
         return data;
       } catch (error) {
         const errors = error?.response?.data?.errors;
@@ -88,6 +109,16 @@ export const useAuthStore = defineStore("authStore", {
       try {
         const { data } = await api.get("/auth/me");
         this.user = data;
+        
+        if (this.isRestaurant && this.user.restaurant_id) {
+          try {
+            const permRes = await api.get('/role_permissions');
+            this.rolePermissions = permRes.data || [];
+          } catch(e) {
+            console.error("Failed to load RBAC permissions");
+          }
+        }
+
         this.persist();
       } catch {
         this.logoutLocal();
@@ -110,8 +141,23 @@ export const useAuthStore = defineStore("authStore", {
       this.token = "";
       this.user = null;
       this.selectedRestaurantId = "";
+      this.restaurantWelcomeNotice = "";
       this.error = "";
+      this.justLoggedIn = false;
       this.persist();
+    },
+    setRestaurantWelcomeNotice(message) {
+      this.restaurantWelcomeNotice = message || "";
+      this.persist();
+    },
+    consumeRestaurantWelcomeNotice() {
+      const message = this.restaurantWelcomeNotice;
+      this.restaurantWelcomeNotice = "";
+      this.persist();
+      return message;
+    },
+    consumeLoginState() {
+      this.justLoggedIn = false;
     }
   }
 });

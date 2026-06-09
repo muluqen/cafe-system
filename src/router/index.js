@@ -12,7 +12,11 @@ import LoginView from "../views/LoginView.vue";
 import RestaurantBuilderView from "../views/RestaurantBuilderView.vue";
 import RestaurantPulseView from "../views/RestaurantPulseView.vue";
 import StaffLoginView from "../views/StaffLoginView.vue";
+import PosView from "../views/PosView.vue";
+import KitchenDisplayView from "../views/KitchenDisplayView.vue";
+import AnalyticsView from "../views/AnalyticsView.vue";
 import { entities } from "../config/entities";
+import { getStaffRoleMeta } from "../utils/staffRoles";
 
 function defaultRestaurantRoute(auth) {
   if (!auth.isRestaurant) {
@@ -22,16 +26,13 @@ function defaultRestaurantRoute(auth) {
   if (auth.staffRole === "manager") {
     return { name: "restaurant-builder" };
   }
-
-  if (auth.staffRole === "cashier") {
-    return { name: "orders" };
+  if (["cashier", "server", "floor_manager"].includes(auth.staffRole)) {
+    return { name: "pos" };
   }
-
-  if (auth.staffRole === "barista") {
-    return { name: "menu_items" };
+  if (["kitchen", "barista"].includes(auth.staffRole)) {
+    return { name: "kds" };
   }
-
-  return { name: "dashboard" };
+  return getStaffRoleMeta(auth.staffRole).defaultRoute || { name: "dashboard" };
 }
 
 const entityRoutes = entities.map((entity) => ({
@@ -95,6 +96,24 @@ const router = createRouter({
           path: "restaurant-pulse",
           name: "restaurant-pulse",
           component: RestaurantPulseView,
+          meta: { roles: ["restaurant"], staffRoles: ["manager"] }
+        },
+        {
+          path: "pos",
+          name: "pos",
+          component: PosView,
+          meta: { roles: ["restaurant"], staffRoles: ["manager", "floor_manager", "server", "cashier"] }
+        },
+        {
+          path: "kds",
+          name: "kds",
+          component: KitchenDisplayView,
+          meta: { roles: ["restaurant"], staffRoles: ["manager", "kitchen", "barista"] }
+        },
+        {
+          path: "analytics",
+          name: "analytics",
+          component: AnalyticsView,
           meta: { roles: ["restaurant"], staffRoles: ["manager"] }
         },
         {

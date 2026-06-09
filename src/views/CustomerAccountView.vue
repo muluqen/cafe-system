@@ -1,5 +1,5 @@
 <template>
-  <section class="customer-stack">
+  <section class="customer-stack" :style="themeStyle">
     <section class="panel account-panel">
       <header class="panel-header panel-header-rich">
         <div>
@@ -36,14 +36,21 @@
 </template>
 
 <script setup>
-import { reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import api from "../services/api";
 import { useAuthStore } from "../stores/authStore";
+import { getRestaurantBranding } from "../utils/restaurantBranding";
 
 const auth = useAuthStore();
 const saving = ref(false);
 const saved = ref(false);
 const error = ref("");
+const restaurantBranding = computed(() => getRestaurantBranding(auth.selectedRestaurantId));
+const themeStyle = computed(() => ({
+  "--restaurant-brand": restaurantBranding.value.brandColor || "#1A2A40",
+  "--restaurant-brand-soft": `${restaurantBranding.value.brandColor || "#1A2A40"}1f`,
+  "--restaurant-brand-gradient": `linear-gradient(135deg, ${(restaurantBranding.value.brandColors || [restaurantBranding.value.brandColor || "#1A2A40"]).join(", ")})`
+}));
 const form = reactive({
   name: auth.user?.name || "",
   email: auth.user?.email || "",

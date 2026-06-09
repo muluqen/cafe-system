@@ -1,14 +1,14 @@
 <template>
-  <section class="customer-stack">
+  <section class="customer-stack" :style="heroStyle">
     <section class="customer-hero panel">
-      <div class="customer-brand-copy" :style="heroStyle">
+      <div class="customer-brand-copy">
         <div class="customer-brand-top">
           <div v-if="restaurantBranding.logoUrl" class="customer-logo-wrap">
             <img :src="restaurantBranding.logoUrl" :alt="`${selectedRestaurantName} logo`" class="customer-logo" />
           </div>
           <div v-else class="customer-logo-fallback">{{ restaurantInitials }}</div>
           <span class="eyebrow" :style="{ color: restaurantBranding.brandColor || undefined }">
-            {{ selectedRestaurantName === "Not selected" ? "Platrick Discover" : `${selectedRestaurantName} on Platrick` }}
+            {{ selectedRestaurantName === "Not selected" ? "DineDirect Discover" : `${selectedRestaurantName} on DineDirect` }}
           </span>
         </div>
         <h1 class="customer-title">
@@ -55,6 +55,17 @@
           </button>
         </header>
         <div class="content-pad">
+          <section class="bowl-builder-banner">
+            <div>
+              <span class="eyebrow">Custom Bowl</span>
+              <h3 class="panel-title">Make your own bowl</h3>
+              <p class="muted">
+                Choose a base, protein, toppings, and sauce, then send your bowl exactly the way you want it.
+              </p>
+            </div>
+            <button class="button" type="button" @click="openBowlBuilder">Build your bowl</button>
+          </section>
+
           <div class="category-pills">
             <button
               v-for="category in categories"
@@ -199,17 +210,18 @@
             </div>
             <div class="quick-grid">
               <button
-                v-for="ingredient in contextualIngredients"
-                :key="ingredient"
+                v-for="ingredientObj in contextualIngredients"
+                :key="ingredientObj.name"
                 class="quick-chip"
                 :class="{
-                  active: isIngredientSelected(ingredient, customizeMode),
+                  active: isIngredientSelected(ingredientObj.name, customizeMode),
                   remove: customizeMode === 'removals'
                 }"
                 type="button"
-                @click="toggleIngredientChoice(ingredient)"
+                @click="toggleIngredientChoice(ingredientObj.name)"
               >
-                {{ ingredient }}
+                {{ ingredientObj.name }}
+                <span v-if="customizeMode === 'additions' && ingredientObj.cost > 0" style="opacity: 0.7; font-size: 0.85em; margin-left: 4px;">(+${{ ingredientObj.cost.toFixed(2) }})</span>
               </button>
             </div>
             <p v-if="!contextualIngredients.length" class="muted">
@@ -217,7 +229,168 @@
             </p>
           </div>
 
-          <button class="button" type="button" @click="commitDraft">Add to order</button>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; border-top: 1px solid var(--line); padding-top: 1rem;">
+            <div>
+              <strong style="font-size: 1.25rem;">${{ customizedDraftPrice.toFixed(2) }}</strong>
+              <span class="muted"> per item</span>
+            </div>
+            <button class="button" type="button" @click="commitDraft">Add to order</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="bowlBuilderOpen" class="modal-backdrop" @click.self="closeBowlBuilder">
+      <div class="modal-card panel">
+        <header class="panel-header">
+          <div>
+            <span class="eyebrow">Custom Bowl</span>
+            <h2 class="panel-title">Make your own bowl</h2>
+          </div>
+          <button class="button button-soft" type="button" @click="closeBowlBuilder">Close</button>
+        </header>
+        <div class="content-pad bowl-builder-grid">
+          <label>
+            Bowl name
+            <input
+              v-model="bowlDraft.name"
+              class="input"
+              type="text"
+              placeholder="My bowl"
+            />
+          </label>
+
+          <label>
+            Quantity
+            <input v-model.number="bowlDraft.quantity" class="input" type="number" min="1" />
+          </label>
+
+          <section class="bowl-section">
+            <div class="bowl-section-head">
+              <span class="selector-label">Base</span>
+              <strong>{{ bowlDraft.bases.length ? `${bowlDraft.bases.length} selected` : "Pick one or more bases" }}</strong>
+            </div>
+            <div class="quick-grid">
+              <button
+                v-for="option in bowlBaseOptions"
+                :key="option"
+                class="quick-chip"
+                :class="{ active: bowlDraft.bases.includes(option) }"
+                type="button"
+                @click="toggleBowlSelection('bases', option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="bowl-section">
+            <div class="bowl-section-head">
+              <span class="selector-label">Protein</span>
+              <strong>{{ bowlDraft.proteins.length ? `${bowlDraft.proteins.length} selected` : "Pick one or more proteins" }}</strong>
+            </div>
+            <div class="quick-grid">
+              <button
+                v-for="option in bowlProteinOptions"
+                :key="option"
+                class="quick-chip"
+                :class="{ active: bowlDraft.proteins.includes(option) }"
+                type="button"
+                @click="toggleBowlSelection('proteins', option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="bowl-section">
+            <div class="bowl-section-head">
+              <span class="selector-label">Fresh toppings</span>
+              <strong>{{ bowlDraft.toppings.length ? `${bowlDraft.toppings.length} selected` : "Choose as many as you want" }}</strong>
+            </div>
+            <div class="quick-grid">
+              <button
+                v-for="option in bowlToppingOptions"
+                :key="option"
+                class="quick-chip"
+                :class="{ active: bowlDraft.toppings.includes(option) }"
+                type="button"
+                @click="toggleBowlSelection('toppings', option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="bowl-section">
+            <div class="bowl-section-head">
+              <span class="selector-label">Sauce or dressing</span>
+              <strong>{{ bowlDraft.sauces.length ? `${bowlDraft.sauces.length} selected` : "Pick one or more" }}</strong>
+            </div>
+            <div class="quick-grid">
+              <button
+                v-for="option in bowlSauceOptions"
+                :key="option"
+                class="quick-chip"
+                :class="{ active: bowlDraft.sauces.includes(option) }"
+                type="button"
+                @click="toggleBowlSelection('sauces', option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <section class="bowl-section">
+            <div class="bowl-section-head">
+              <span class="selector-label">Premium extras</span>
+              <strong>{{ bowlDraft.extras.length }} selected</strong>
+            </div>
+            <div class="quick-grid">
+              <button
+                v-for="option in bowlExtraOptions"
+                :key="option"
+                class="quick-chip"
+                :class="{ active: bowlDraft.extras.includes(option) }"
+                type="button"
+                @click="toggleBowlSelection('extras', option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </section>
+
+          <label>
+            Bowl note
+            <textarea
+              v-model="bowlDraft.note"
+              class="input kitchen-note"
+              rows="4"
+              placeholder="Dressing on the side, extra spicy, cut avocado small..."
+            />
+          </label>
+
+          <div class="bowl-summary">
+            <div>
+              <span class="selector-label">Your bowl</span>
+              <p class="muted">{{ bowlPreviewText }}</p>
+            </div>
+            <div class="bowl-summary-price">
+              <strong>${{ bowlPrice.toFixed(2) }}</strong>
+              <span class="muted">for {{ bowlDraft.quantity }} bowl{{ bowlDraft.quantity > 1 ? "s" : "" }}</span>
+            </div>
+          </div>
+
+          <p v-if="bowlError" class="error-text">{{ bowlError }}</p>
+
+          <div class="order-detail-actions">
+            <button class="button button-soft" type="button" @click="closeBowlBuilder">
+              Cancel
+            </button>
+            <button class="button" type="button" @click="commitBowl">
+              Add bowl to order
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -236,6 +409,7 @@ const router = useRouter();
 const loading = ref(false);
 const submitting = ref(false);
 const error = ref("");
+const bowlError = ref("");
 const categories = ref([]);
 const menuItems = ref([]);
 const ingredients = ref([]);
@@ -245,6 +419,7 @@ const selectedTableId = ref("");
 const orderNote = ref("");
 const cart = ref([]);
 const draftItem = ref(null);
+const bowlBuilderOpen = ref(false);
 const customizeMode = ref("additions");
 const draft = reactive({
   quantity: 1,
@@ -253,6 +428,16 @@ const draft = reactive({
   addText: "",
   removeText: "",
   note: ""
+});
+const bowlDraft = reactive({
+  name: "",
+  bases: [],
+  proteins: [],
+  toppings: [],
+  sauces: [],
+  extras: [],
+  note: "",
+  quantity: 1
 });
 
 const availableTables = computed(() =>
@@ -283,10 +468,64 @@ const restaurantInitials = computed(() =>
     .toUpperCase() || "R"
 );
 const heroStyle = computed(() => ({
-  "--restaurant-brand": restaurantBranding.value.brandColor || "#ff7a59",
-  "--restaurant-brand-soft": `${restaurantBranding.value.brandColor || "#ff7a59"}1f`,
-  "--restaurant-brand-gradient": `linear-gradient(135deg, ${(restaurantBranding.value.brandColors || [restaurantBranding.value.brandColor || "#ff7a59"]).join(", ")})`
+  "--restaurant-brand": restaurantBranding.value.brandColor || "#1A2A40",
+  "--restaurant-brand-soft": `${restaurantBranding.value.brandColor || "#1A2A40"}1f`,
+  "--restaurant-brand-gradient": `linear-gradient(135deg, ${(restaurantBranding.value.brandColors || [restaurantBranding.value.brandColor || "#1A2A40"]).join(", ")})`
 }));
+const bowlBaseOptions = computed(() =>
+  ingredientMatches(
+    ["brown rice", "white rice", "quinoa", "greens", "lettuce", "spinach", "couscous"],
+    ["Brown rice", "White rice", "Quinoa", "Mixed greens", "Romaine", "Spinach"],
+    6
+  )
+);
+const bowlProteinOptions = computed(() =>
+  ingredientMatches(
+    ["chicken", "beef", "steak", "salmon", "tuna", "shrimp", "falafel", "tofu", "egg"],
+    ["Grilled chicken", "Spiced beef", "Roasted salmon", "Falafel", "Tofu", "Boiled egg"],
+    6
+  )
+);
+const bowlToppingOptions = computed(() =>
+  ingredientMatches(
+    ["tomato", "onion", "corn", "cucumber", "olive", "avocado", "pepper", "carrot", "bean", "cheese", "chickpea"],
+    ["Cherry tomato", "Pickled onion", "Sweet corn", "Cucumber", "Avocado", "Feta", "Chickpeas", "Carrot ribbons"],
+    10
+  )
+);
+const bowlSauceOptions = computed(() =>
+  ingredientMatches(
+    ["tahini", "vinaigrette", "pesto", "bbq", "ranch", "mayo", "sauce", "hummus", "yogurt"],
+    ["Lemon tahini", "Herb vinaigrette", "Spicy mayo", "Pesto yogurt", "Smoky bbq"],
+    6
+  )
+);
+const bowlExtraOptions = computed(() =>
+  ingredientMatches(
+    ["egg", "avocado", "cheese", "jalapeno", "nuts", "seed", "pickle"],
+    ["Extra avocado", "Soft egg", "Feta crumble", "Crunchy seeds", "Jalapeno"],
+    8
+  )
+);
+const bowlPrice = computed(() => {
+  const baseCharge = Math.max(0, bowlDraft.bases.length - 1) * 1.25;
+  const proteinCharge = Math.max(0, bowlDraft.proteins.length - 1) * 3.25;
+  const sauceCharge = Math.max(0, bowlDraft.sauces.length - 1) * 0.75;
+  const extrasCharge = bowlDraft.extras.length * 1.5;
+  const toppingsCharge = Math.max(0, bowlDraft.toppings.length - 4) * 0.75;
+  const singleBowl = 11.5 + baseCharge + proteinCharge + sauceCharge + extrasCharge + toppingsCharge;
+  return singleBowl * Math.max(1, Number(bowlDraft.quantity) || 1);
+});
+const bowlPreviewText = computed(() => {
+  const parts = [];
+  if (bowlDraft.bases.length) parts.push(`Base: ${bowlDraft.bases.join(", ")}`);
+  if (bowlDraft.proteins.length) parts.push(`Protein: ${bowlDraft.proteins.join(", ")}`);
+  if (bowlDraft.toppings.length) parts.push(bowlDraft.toppings.join(", "));
+  if (bowlDraft.sauces.length) parts.push(`Sauce: ${bowlDraft.sauces.join(", ")}`);
+  if (bowlDraft.extras.length) parts.push(`Extras: ${bowlDraft.extras.join(", ")}`);
+  if (bowlDraft.note.trim()) parts.push(`Note: ${bowlDraft.note.trim()}`);
+  return parts.join(" | ") || "Choose as many bases, proteins, toppings, sauces, and extras as you want to preview your bowl.";
+});
 const draftCategoryName = computed(() => {
   const category = categories.value.find((row) => row.id === draftItem.value?.menu_category_id);
   return category?.name || "";
@@ -354,9 +593,21 @@ const contextualIngredients = computed(() => {
     .filter((entry) => entry.name && entry.score > 0)
     .sort((left, right) => right.score - left.score)
     .slice(0, 10)
-    .map((entry) => entry.name);
+    .map((entry) => {
+      const fullIng = ingredients.value.find(i => i.name === entry.name);
+      return { name: entry.name, cost: Number(fullIng?.cost_per_unit || 0) };
+    });
 
-  return [...new Set(scored)];
+  return [...new Set(scored.map(s => JSON.stringify(s)))].map(s => JSON.parse(s));
+});
+
+const customizedDraftPrice = computed(() => {
+  let price = Number(draftItem.value?.price || 0);
+  for (const addName of draft.additions) {
+     const ing = ingredients.value.find(i => i.name === addName);
+     if (ing) price += Number(ing.cost_per_unit || 0);
+  }
+  return price;
 });
 const addPlaceholder = computed(() => {
   const text = `${draftItem.value?.name || ""} ${draftCategoryName.value}`.toLowerCase();
@@ -459,6 +710,93 @@ function resetDraft() {
   customizeMode.value = "additions";
 }
 
+function ingredientMatches(tokens, fallback, limit) {
+  const matched = ingredients.value
+    .map((ingredient) => String(ingredient.name || "").trim())
+    .filter(Boolean)
+    .filter((name) => tokens.some((token) => name.toLowerCase().includes(token)))
+    .slice(0, limit);
+
+  if (matched.length) {
+    return matched;
+  }
+
+  if (fallback?.length) {
+    return fallback.slice(0, limit);
+  }
+
+  return [];
+}
+
+function resetBowlDraft() {
+  bowlDraft.name = "";
+  bowlDraft.bases = [];
+  bowlDraft.proteins = [];
+  bowlDraft.toppings = [];
+  bowlDraft.sauces = [];
+  bowlDraft.extras = [];
+  bowlDraft.note = "";
+  bowlDraft.quantity = 1;
+  bowlError.value = "";
+}
+
+function openBowlBuilder() {
+  resetBowlDraft();
+  bowlBuilderOpen.value = true;
+}
+
+function closeBowlBuilder() {
+  bowlBuilderOpen.value = false;
+  bowlError.value = "";
+}
+
+function toggleBowlSelection(bucket, value) {
+  bowlError.value = "";
+  bowlDraft[bucket] = bowlDraft[bucket].includes(value)
+    ? bowlDraft[bucket].filter((entry) => entry !== value)
+    : [...bowlDraft[bucket], value];
+}
+
+function commitBowl() {
+  bowlError.value = "";
+
+  if (!bowlDraft.bases.length) {
+    bowlError.value = "Pick at least one base for the bowl.";
+    return;
+  }
+
+  if (!bowlDraft.proteins.length) {
+    bowlError.value = "Pick at least one protein for the bowl.";
+    return;
+  }
+
+  if (!bowlDraft.sauces.length) {
+    bowlError.value = "Pick at least one sauce or dressing for the bowl.";
+    return;
+  }
+
+  const label = bowlDraft.name.trim() || "Make your own bowl";
+  const quantity = Math.max(1, Number(bowlDraft.quantity) || 1);
+  const singleBowlPrice = Number((bowlPrice.value / quantity).toFixed(2));
+  cart.value.push({
+    uid: `bowl-${Date.now()}-${Math.random()}`,
+    menu_item_id: null,
+    item_name: label,
+    quantity,
+    unit_price: singleBowlPrice,
+    additions: [
+      `Base: ${bowlDraft.bases.join(", ")}`,
+      `Protein: ${bowlDraft.proteins.join(", ")}`,
+      bowlDraft.toppings.length ? `Toppings: ${bowlDraft.toppings.join(", ")}` : null,
+      `Sauce: ${bowlDraft.sauces.join(", ")}`,
+      bowlDraft.extras.length ? `Extras: ${bowlDraft.extras.join(", ")}` : null
+    ].filter(Boolean),
+    removals: [],
+    note: bowlDraft.note.trim() || "Built with the custom bowl feature."
+  });
+  closeBowlBuilder();
+}
+
 function openCustomizer(item) {
   draftItem.value = item;
   resetDraft();
@@ -532,7 +870,7 @@ function commitDraft() {
     menu_item_id: draftItem.value.id,
     item_name: draftItem.value.name,
     quantity: Math.max(1, Number(draft.quantity) || 1),
-    unit_price: Number(draftItem.value.price || 0),
+    unit_price: customizedDraftPrice.value,
     additions: [...draft.additions],
     removals: [...draft.removals],
     note: draft.note.trim()
@@ -559,30 +897,20 @@ async function placeOrder() {
   try {
     const orderPayload = {
       table_id: selectedTableId.value || null,
-      status: "pending",
       subtotal: Number(subtotal.value.toFixed(2)),
       tax: Number(tax.value.toFixed(2)),
       total: Number(total.value.toFixed(2)),
-      notes: orderNote.value.trim() || null,
-      placed_at: new Date().toISOString()
+      cart: cart.value.map(entry => ({
+        menu_item_id: entry.menu_item_id,
+        name: entry.item_name,
+        quantity: entry.quantity,
+        price: Number(entry.unit_price.toFixed(2)),
+        notes: makeNote(entry) || null
+      }))
     };
 
-    const orderRes = await api.post("/orders", orderPayload);
-    const orderId = orderRes.data?.id;
-
-    await Promise.all(
-      cart.value.map((entry) =>
-        api.post("/order_items", {
-          order_id: orderId,
-          menu_item_id: entry.menu_item_id,
-          item_name: entry.item_name,
-          quantity: entry.quantity,
-          unit_price: Number(entry.unit_price.toFixed(2)),
-          line_total: Number((entry.unit_price * entry.quantity).toFixed(2)),
-          notes: makeNote(entry) || null
-        })
-      )
-    );
+    // Use our new automated inventory deduction checkout process
+    await api.post("/checkout/process", orderPayload);
 
     cart.value = [];
     orderNote.value = "";

@@ -1,5 +1,5 @@
 <template>
-  <section class="customer-stack">
+  <section class="customer-stack" :style="themeStyle">
     <section class="panel rewards-hero">
       <div>
         <span class="eyebrow">Guest Journey</span>
@@ -102,6 +102,7 @@
 import { computed, onMounted, ref } from "vue";
 import api from "../services/api";
 import { useAuthStore } from "../stores/authStore";
+import { getRestaurantBranding } from "../utils/restaurantBranding";
 
 const auth = useAuthStore();
 const orders = ref([]);
@@ -112,6 +113,12 @@ const selectedRestaurantName = computed(() => {
   );
   return restaurant?.name || "this restaurant";
 });
+const restaurantBranding = computed(() => getRestaurantBranding(auth.selectedRestaurantId));
+const themeStyle = computed(() => ({
+  "--restaurant-brand": restaurantBranding.value.brandColor || "#1A2A40",
+  "--restaurant-brand-soft": `${restaurantBranding.value.brandColor || "#1A2A40"}1f`,
+  "--restaurant-brand-gradient": `linear-gradient(135deg, ${(restaurantBranding.value.brandColors || [restaurantBranding.value.brandColor || "#1A2A40"]).join(", ")})`
+}));
 
 const restaurantOrders = computed(() =>
   orders.value.filter(
@@ -170,7 +177,7 @@ const unlocks = computed(() => {
     { name: "Priority Table Ping", threshold: 60, description: "Early heads-up when tables open around your usual times." },
     { name: "Chef Surprise", threshold: 140, description: "A rotating off-menu extra or tasting recommendation." },
     { name: "Fast Reorder Lane", threshold: 220, description: "One-tap favorite ordering with a reserved prep note." },
-    { name: "Platrick Gold Guest", threshold: 340, description: "Top-tier recognition for your most-loved restaurant." }
+    { name: "DineDirect Gold Guest", threshold: 340, description: "Top-tier recognition for your most-loved restaurant." }
   ];
 
   return targets.map((unlock) => ({
@@ -187,9 +194,7 @@ async function loadOrders() {
 }
 
 onMounted(async () => {
-  if (!auth.publicRestaurants.length) {
-    await auth.loadPublicRestaurants();
-  }
+  await auth.loadPublicRestaurants();
   await loadOrders();
 });
 </script>

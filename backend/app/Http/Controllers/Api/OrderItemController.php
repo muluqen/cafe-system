@@ -9,8 +9,8 @@ use Illuminate\Http\Request;
 class OrderItemController extends BaseApiController
 {
     protected array $allowedRoles = ['restaurant', 'customer'];
-    protected array $allowedStaffRoles = ['manager', 'cashier', 'barista'];
-    protected array $mutableStaffRoles = ['manager', 'cashier', 'barista'];
+    protected array $allowedStaffRoles = ['manager', 'floor_manager', 'host', 'server', 'cashier', 'barista', 'kitchen'];
+    protected array $mutableStaffRoles = ['manager', 'floor_manager', 'host', 'server', 'cashier', 'barista', 'kitchen'];
     protected bool $allowCustomerMutations = true;
 
     protected ?string $restaurantColumn = null;
@@ -36,6 +36,8 @@ class OrderItemController extends BaseApiController
             'unit_price' => [$updating ? 'sometimes' : 'required', 'numeric', 'min:0'],
             'line_total' => [$updating ? 'sometimes' : 'required', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string'],
+            'routing_station' => ['sometimes', 'string'],
+            'status' => ['sometimes', 'string'],
         ];
     }
 
