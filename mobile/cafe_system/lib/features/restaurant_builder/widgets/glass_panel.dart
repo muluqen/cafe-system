@@ -5,10 +5,10 @@ class GlassPanel extends StatelessWidget {
   final EdgeInsetsGeometry padding;
 
   const GlassPanel({
-    Key? key,
+    super.key,
     required this.child,
     this.padding = const EdgeInsets.all(20),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

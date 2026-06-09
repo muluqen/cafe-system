@@ -1,6 +1,23 @@
 import 'package:dio/dio.dart';
-import 'package:riverpod/riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+// ==========================================
+// 1. PROVIDERS (Needed for AuthProvider)
+// ==========================================
+
+final apiProvider = Provider<ApiService>((ref) {
+  return ApiService(ref);
+});
+
+// This is exactly what auth_provider.dart is looking for!
+final dioProvider = Provider<Dio>((ref) {
+  return ref.watch(apiProvider).dio;
+});
+
+// ==========================================
+// 2. API SERVICE CLASS
+// ==========================================
 
 class ApiService {
   late Dio dio;
@@ -10,7 +27,10 @@ class ApiService {
       BaseOptions(
         baseUrl: const String.fromEnvironment(
           'API_BASE_URL',
-          defaultValue: 'http://127.0.0.1:8000/api',
+          // TIP: If you are testing on an Android Emulator, 127.0.0.1 will fail. 
+          // You need to change this to 'http://10.0.2.2:8000/api' for Android.
+          // iOS Simulator and Web work fine with 127.0.0.1.
+          defaultValue: 'http://127.0.0.1:8000/api', 
         ),
         headers: {
           'Accept': 'application/json',
@@ -25,11 +45,12 @@ class ApiService {
         final token = prefs.getString('cafe_auth_token');
         final restaurantId = prefs.getString('cafe_selected_restaurant_id');
 
-        if (token != null) {
+        // Added .isNotEmpty checks to prevent sending "Bearer " on logged-out state
+        if (token != null && token.isNotEmpty) {
           options.headers['Authorization'] = 'Bearer $token';
         }
 
-        if (restaurantId != null) {
+        if (restaurantId != null && restaurantId.isNotEmpty) {
           options.headers['X-Restaurant-Id'] = restaurantId;
         }
 

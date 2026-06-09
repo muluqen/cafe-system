@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import 'package:cafe_system/features/auth/providers/auth_provider.dart';
 import 'package:cafe_system/features/restaurant_builder/screens/login_screen.dart';
 import 'package:cafe_system/features/restaurant_builder/screens/starter_screen.dart';
@@ -20,32 +21,91 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
     final authNotifier = ref.read(authProvider.notifier);
 
     return Scaffold(
-      // This prevents the keyboard from causing overflow
-      resizeToAvoidBottomInset: true, 
+      resizeToAvoidBottomInset: true,
       body: LayoutBuilder(
         builder: (context, constraints) {
           return Row(
             children: [
-              // LEFT SIDE (Showcase) - Hidden on small screens if you want
-              if (constraints.maxWidth > 800)
+              if (constraints.maxWidth > 900)
                 const Expanded(
                   flex: 5,
                   child: StarterPage(),
                 ),
-              
-              // RIGHT SIDE (Form)
+
               Expanded(
-                flex: constraints.maxWidth > 800 ? 5 : 10,
+                flex: constraints.maxWidth > 900 ? 5 : 10,
                 child: LoginPage(
                   isSignup: isSignup,
-                  onToggle: () => setState(() => isSignup = !isSignup),
+                  onToggle: () {
+                    setState(() {
+                      isSignup = !isSignup;
+                    });
+                  },
                   loading: authState.loading,
                   error: authState.error,
-                  onSubmit: (email, password, name) {
-                    if (isSignup) {
-                      authNotifier.register({'name': name, 'email': email, 'password': password});
-                    } else {
-                      authNotifier.login(email, password);
+
+                  onSubmit: (data) async {
+                    try {
+                      final type = data["type"];
+
+                      // =========================
+                      // CUSTOMER LOGIN
+                      // =========================
+                      if (type == "customer_login") {
+                        await authNotifier.login(
+                          data["email"],
+                          data["password"],
+                        );
+                      }
+
+                      // =========================
+                      // CUSTOMER REGISTER
+                      // =========================
+                      else if (type == "customer_signup") {
+                        await authNotifier.register({
+                          "name": data["name"],
+                          "email": data["email"],
+                          "password": data["password"],
+                        });
+                      }
+
+                      // =========================
+                      // STAFF LOGIN
+                      // =========================
+                      else if (type == "staff_login") {
+                        await authNotifier.login(
+                          data["email"],
+                          data["password"],
+                          accessKey: data["access_key"], // FIXED: passes access key to notifier
+                        );
+                      }
+
+                      // =========================
+                      // TEAM REGISTER
+                      // =========================
+                      else if (type == "team_signup") {
+                        await authNotifier.register({
+                          "name": data["name"],
+                          "email": data["email"],
+                          "password": data["password"],
+                          "access_key": data["access_key"],
+                        });
+                      }
+
+                      // =========================
+                      // RESTAURANT REGISTER
+                      // =========================
+                      else if (type == "restaurant_signup") {
+                        await authNotifier.registerRestaurant({
+                          "restaurant_name": data["restaurant_name"],
+                          "owner_name": data["owner_name"],
+                          "email": data["email"],
+                          "password": data["password"],
+                          "access_key": data["access_key"],
+                        });
+                      }
+                    } catch (e) {
+                      debugPrint("Auth error: $e");
                     }
                   },
                 ),

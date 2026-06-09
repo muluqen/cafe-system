@@ -13,17 +13,20 @@ class AuthState {
   final String error;
   final List<dynamic> publicRestaurants;
 
+  // GETTERS (Matched exactly with Pinia)
   bool get isAuthenticated => token.isNotEmpty;
+  String get role => user?.role ?? '';
+  String get staffRole => user?.staffRole ?? '';
   bool get isRestaurant => user?.role == 'restaurant';
   bool get isCustomer => user?.role == 'customer';
-  String get staffRole => user?.staffRole ?? '';
+
   AuthState({
     this.token = '',
     this.user,
     this.selectedRestaurantId = '',
     this.loading = false,
     this.error = '',
-    this.publicRestaurants = const [], // Default to empty list
+    this.publicRestaurants = const [], 
   });
 
   AuthState copyWith({
@@ -57,23 +60,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   // --- ACTIONS ---
-  Future<void> registerRestaurant(Map<String, dynamic> payload) async {
-  // endpoint: /auth/register-restaurant
-  await _submitAuth("/auth/register-restaurant", payload);
-}
-Future<void> saveBranding(int restaurantId, Map<String, dynamic> config) async {
-  final prefs = await SharedPreferences.getInstance();
-  final String key = "cafe_restaurant_site_config_$restaurantId";
-  await prefs.setString(key, jsonEncode(config));
-}
-
-Future<Map<String, dynamic>> getBranding(int restaurantId) async {
-  final prefs = await SharedPreferences.getInstance();
-  final String key = "cafe_restaurant_site_config_$restaurantId";
-  final String? raw = prefs.getString(key);
-  if (raw == null) return {}; // Return defaults
-  return jsonDecode(raw);
-}  
 
   Future<void> loadPublicRestaurants() async {
     try {
@@ -86,18 +72,25 @@ Future<Map<String, dynamic>> getBranding(int restaurantId) async {
     }
   }
 
-  Future<void> login(String email, String password) async {
-    await _submitAuth("/auth/login", {
+  Future<void> login(String email, String password, {String? accessKey}) async {
+    final payload = {
       'email': email,
       'password': password,
-    });
+    };
+    if (accessKey != null && accessKey.isNotEmpty) {
+      payload['access_key'] = accessKey;
+    }
+    await _submitAuth("/auth/login", payload);
   }
 
   Future<void> register(Map<String, dynamic> payload) async {
     await _submitAuth("/auth/register", payload);
   }
 
-  // Shared Logic for Login/Register (replicates Vue's submitAuth)
+  Future<void> registerRestaurant(Map<String, dynamic> payload) async {
+    await _submitAuth("/auth/register-restaurant", payload);
+  }
+
   Future<void> _submitAuth(String endpoint, Map<String, dynamic> payload) async {
     state = state.copyWith(loading: true, error: '');
     try {
@@ -108,7 +101,7 @@ Future<Map<String, dynamic>> getBranding(int restaurantId) async {
       String restId = '';
 
       if (user.role == 'restaurant') {
-        restId = user.restaurantId.toString();
+        restId = user.restaurantId?.toString() ?? '';
       }
 
       state = state.copyWith(
@@ -121,12 +114,15 @@ Future<Map<String, dynamic>> getBranding(int restaurantId) async {
     } on DioException catch (e) {
       String errorMessage = "Authentication failed";
       
-      // Handle Laravel validation errors (flattened like your Vue code)
-      if (e.response?.data['errors'] != null) {
-        final Map<String, dynamic> errors = e.response?.data['errors'];
-        errorMessage = errors.values.expand((e) => e as List).join(" ");
-      } else if (e.response?.data['message'] != null) {
-        errorMessage = e.response?.data['message'];
+      if (e.response?.data != null && e.response!.data is Map) {
+        final errorData = e.response!.data as Map<String, dynamic>;
+        
+        if (errorData['errors'] != null) {
+          final Map<String, dynamic> errors = errorData['errors'];
+          errorMessage = errors.values.expand((err) => err is List ? err : [err]).join(" ");
+        } else if (errorData['message'] != null) {
+          errorMessage = errorData['message'];
+        }
       }
       
       state = state.copyWith(loading: false, error: errorMessage);
@@ -134,16 +130,44 @@ Future<Map<String, dynamic>> getBranding(int restaurantId) async {
     }
   }
 
+  // Matching Pinia fetchMe()
+  Future<void> fetchMe() async {
+    if (state.token.isEmpty) {
+      return;
+    }
+
+    try {
+      final response = await _dio.get("/auth/me");
+      final user = User.fromJson(response.data);
+      state = state.copyWith(user: user);
+      await _persist();
+    } catch (e) {
+      await logoutLocal();
+    }
+  }
+
+  void setSelectedRestaurant(String id) {
+    state = state.copyWith(selectedRestaurantId: id);
+    _persist();
+  }
+
   Future<void> logout() async {
     try {
       if (state.token.isNotEmpty) {
         await _dio.post("/auth/logout");
       }
+    } catch (e) {
+      // Ignore network errors on logout
+      print("Logout API failed, forcing local logout.");
     } finally {
-      state = AuthState(); // Resets everything including publicRestaurants
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear();
+      await logoutLocal();
     }
+  }
+
+  // Matching Pinia logoutLocal()
+  Future<void> logoutLocal() async {
+    state = AuthState(); // Resets everything to default
+    await _persist();
   }
 
   // --- HELPERS ---
@@ -169,19 +193,41 @@ Future<Map<String, dynamic>> getBranding(int restaurantId) async {
     );
   }
 
+  // Matching Pinia persist() exactly (removes keys if they are empty)
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("cafe_auth_token", state.token);
-    await prefs.setString("cafe_selected_restaurant_id", state.selectedRestaurantId);
+    
+    if (state.token.isNotEmpty) {
+      await prefs.setString("cafe_auth_token", state.token);
+    } else {
+      await prefs.remove("cafe_auth_token");
+    }
+    
     if (state.user != null) {
       await prefs.setString("cafe_auth_user", jsonEncode(state.user!.toJson()));
     } else {
       await prefs.remove("cafe_auth_user");
     }
+
+    if (state.selectedRestaurantId.isNotEmpty) {
+      await prefs.setString("cafe_selected_restaurant_id", state.selectedRestaurantId);
+    } else {
+      await prefs.remove("cafe_selected_restaurant_id");
+    }
   }
 
-  void setSelectedRestaurant(String id) {
-    state = state.copyWith(selectedRestaurantId: id);
-    _persist();
+  // Extra features not in Pinia but kept from your original code
+  Future<void> saveBranding(int restaurantId, Map<String, dynamic> config) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String key = "cafe_restaurant_site_config_$restaurantId";
+    await prefs.setString(key, jsonEncode(config));
   }
+
+  Future<Map<String, dynamic>> getBranding(int restaurantId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final String key = "cafe_restaurant_site_config_$restaurantId";
+    final String? raw = prefs.getString(key);
+    if (raw == null) return {}; 
+    return jsonDecode(raw);
+  }  
 }
