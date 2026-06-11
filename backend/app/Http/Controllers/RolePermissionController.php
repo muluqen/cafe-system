@@ -2,43 +2,60 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Responses\ApiResponse;
 use App\Models\RolePermission;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Handles role permission management.
+ */
 class RolePermissionController extends Controller
 {
-    public function index(Request $request)
+    /**
+     * List role permissions for the restaurant.
+     */
+    public function index(Request $request): JsonResponse
     {
         $restaurantId = $request->user()->restaurant_id;
-        if (!$restaurantId) return response()->json([]);
+        if (!$restaurantId) {
+            return ApiResponse::success([]);
+        }
 
-        return RolePermission::where('restaurant_id', $restaurantId)->get();
+        $permissions = RolePermission::where('restaurant_id', $restaurantId)->get();
+
+        return ApiResponse::success($permissions);
     }
 
-    public function store(Request $request)
+    /**
+     * Create or update a role permission.
+     */
+    public function store(Request $request): JsonResponse
     {
         $restaurantId = $request->user()->restaurant_id;
-        if (!$restaurantId) return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$restaurantId) {
+            return ApiResponse::error('Unauthorized', null, 403);
+        }
 
         $validated = $request->validate([
             'staff_role' => 'required|string',
             'entity_key' => 'required|string',
-            'can_read' => 'required|boolean',
-            'can_write' => 'required|boolean',
+            'can_read'   => 'required|boolean',
+            'can_write'  => 'required|boolean',
         ]);
 
         $permission = RolePermission::updateOrCreate(
             [
                 'restaurant_id' => $restaurantId,
-                'staff_role' => $validated['staff_role'],
-                'entity_key' => $validated['entity_key']
+                'staff_role'    => $validated['staff_role'],
+                'entity_key'    => $validated['entity_key'],
             ],
             [
-                'can_read' => $validated['can_read'],
+                'can_read'  => $validated['can_read'],
                 'can_write' => $validated['can_write'],
             ]
         );
 
-        return response()->json($permission);
+        return ApiResponse::success($permission, 'Saved');
     }
 }

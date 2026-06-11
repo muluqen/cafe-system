@@ -15,6 +15,7 @@ class OrderItem extends Model
         'unit_price',
         'line_total',
         'notes',
+        'customized_ingredients',
         'routing_station',
         'status',
     ];
@@ -23,6 +24,7 @@ class OrderItem extends Model
         'quantity' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'line_total' => 'decimal:2',
+        'customized_ingredients' => 'array',
     ];
 
     public function order(): BelongsTo

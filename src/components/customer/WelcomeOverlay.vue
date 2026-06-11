@@ -37,7 +37,7 @@ defineProps({
   },
   restaurantName: {
     type: String,
-    default: "DineDirect"
+    default: "Tavliq"
   }
 });
 </script>

@@ -15,6 +15,7 @@ class Ingredient extends Model
         'current_stock',
         'reorder_level',
         'cost_per_unit',
+        'calories_per_unit',
         'is_active',
     ];
 
@@ -22,6 +23,7 @@ class Ingredient extends Model
         'current_stock' => 'decimal:3',
         'reorder_level' => 'decimal:3',
         'cost_per_unit' => 'decimal:2',
+        'calories_per_unit' => 'decimal:2',
         'is_active' => 'boolean',
     ];
 
@@ -33,5 +35,10 @@ class Ingredient extends Model
     public function inventoryTransactions(): HasMany
     {
         return $this->hasMany(InventoryTransaction::class);
+    }
+
+    public function recipeIngredients(): HasMany
+    {
+        return $this->hasMany(RecipeIngredient::class);
     }
 }

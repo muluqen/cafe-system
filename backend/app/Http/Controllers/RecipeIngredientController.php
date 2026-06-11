@@ -2,63 +2,88 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Responses\ApiResponse;
 use App\Models\RecipeIngredient;
+use App\Services\MenuService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Handles recipe ingredient CRUD.
+ */
 class RecipeIngredientController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(
+        private readonly MenuService $menuService
+    ) {}
+
+    /**
+     * List recipe ingredients for the restaurant.
+     */
+    public function index(Request $request): JsonResponse
     {
         $restaurantId = $request->user()->restaurant_id;
-        if (!$restaurantId) return response()->json([]);
+        if (!$restaurantId) {
+            return ApiResponse::success([]);
+        }
 
-        return RecipeIngredient::where('restaurant_id', $restaurantId)->get();
+        $recipes = RecipeIngredient::where('restaurant_id', $restaurantId)->get();
+
+        return ApiResponse::success($recipes);
     }
 
-    public function store(Request $request)
+    /**
+     * Create a recipe ingredient link.
+     */
+    public function store(Request $request): JsonResponse
     {
         $restaurantId = $request->user()->restaurant_id;
-        if (!$restaurantId) return response()->json(['message' => 'Unauthorized'], 403);
-
-        $validated = $request->validate([
-            'menu_item_id' => 'required|exists:menu_items,id',
-            'ingredient_id' => 'required|exists:ingredients,id',
-            'quantity_required' => 'required|numeric|min:0',
-        ]);
-
-        $recipe = RecipeIngredient::create([
-            'restaurant_id' => $restaurantId,
-            'menu_item_id' => $validated['menu_item_id'],
-            'ingredient_id' => $validated['ingredient_id'],
-            'quantity_required' => $validated['quantity_required'],
-        ]);
-
-        return response()->json($recipe);
-    }
-
-    public function update(Request $request, RecipeIngredient $recipeIngredient)
-    {
-        if ($recipeIngredient->restaurant_id !== $request->user()->restaurant_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$restaurantId) {
+            return ApiResponse::error('Unauthorized', null, 403);
         }
 
         $validated = $request->validate([
-            'menu_item_id' => 'required|exists:menu_items,id',
-            'ingredient_id' => 'required|exists:ingredients,id',
+            'menu_item_id'      => 'required|exists:menu_items,id',
+            'ingredient_id'     => 'required|exists:ingredients,id',
             'quantity_required' => 'required|numeric|min:0',
         ]);
 
-        $recipeIngredient->update($validated);
-        return response()->json($recipeIngredient);
+        $recipe = $this->menuService->createRecipeIngredient($validated, $restaurantId);
+
+        return ApiResponse::success($recipe, 'Created', 201);
     }
 
-    public function destroy(Request $request, RecipeIngredient $recipeIngredient)
+    /**
+     * Update a recipe ingredient.
+     */
+    public function update(Request $request, RecipeIngredient $recipeIngredient): JsonResponse
     {
         if ($recipeIngredient->restaurant_id !== $request->user()->restaurant_id) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+            return ApiResponse::error('Unauthorized', null, 403);
+        }
+
+        $validated = $request->validate([
+            'menu_item_id'      => 'required|exists:menu_items,id',
+            'ingredient_id'     => 'required|exists:ingredients,id',
+            'quantity_required' => 'required|numeric|min:0',
+        ]);
+
+        $recipe = $this->menuService->updateRecipeIngredient($recipeIngredient, $validated);
+
+        return ApiResponse::success($recipe, 'Updated');
+    }
+
+    /**
+     * Delete a recipe ingredient.
+     */
+    public function destroy(Request $request, RecipeIngredient $recipeIngredient): JsonResponse
+    {
+        if ($recipeIngredient->restaurant_id !== $request->user()->restaurant_id) {
+            return ApiResponse::error('Unauthorized', null, 403);
         }
 
         $recipeIngredient->delete();
-        return response()->json(['message' => 'Deleted']);
+
+        return ApiResponse::success(null, 'Deleted');
     }
 }

@@ -136,8 +136,10 @@ import api from "../services/api";
 import { useAuthStore } from "../stores/authStore";
 import { restaurantBuilderSteps } from "../utils/restaurantBuilderSteps";
 import { getRestaurantBranding, saveRestaurantBranding } from "../utils/restaurantBranding";
+import { useToast } from '../composables/useToast'
 
 const auth = useAuthStore();
+const toast = useToast();
 const router = useRouter();
 const steps = restaurantBuilderSteps;
 const currentStepIndex = ref(0);
@@ -298,10 +300,11 @@ async function loadSetupLists() {
     api.get("/tables", { params: { per_page: 200 } })
   ]);
 
-  menuCategories.value = results[0].status === "fulfilled" ? results[0].value.data?.data || [] : [];
-  menuItems.value = results[1].status === "fulfilled" ? results[1].value.data?.data || [] : [];
-  staffMembers.value = results[2].status === "fulfilled" ? results[2].value.data?.data || [] : [];
-  tables.value = results[3].status === "fulfilled" ? results[3].value.data?.data || [] : [];
+  function unwrap(res) { const raw = res.data?.data; return Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [] }
+  menuCategories.value = results[0].status === "fulfilled" ? unwrap(results[0].value) : [];
+  menuItems.value = results[1].status === "fulfilled" ? unwrap(results[1].value) : [];
+  staffMembers.value = results[2].status === "fulfilled" ? unwrap(results[2].value) : [];
+  tables.value = results[3].status === "fulfilled" ? unwrap(results[3].value) : [];
 }
 
 async function persistBrand(activate = brandForm.isActive) {
@@ -395,9 +398,11 @@ async function saveMenuItem() {
       preparation_time_minutes: ""
     });
     await loadSetupLists();
+    toast.success('Menu item added successfully');
     message.value = "Menu item added.";
   } catch (requestError) {
     error.value = requestError?.response?.data?.message || "Unable to add the menu item.";
+    toast.error(error.value);
   } finally {
     saving.value = false;
   }
@@ -405,9 +410,14 @@ async function saveMenuItem() {
 
 async function removeMenuItem(id) {
   message.value = "";
-  await api.delete(`/menu_items/${id}`);
-  await loadSetupLists();
-  message.value = "Menu item removed successfully.";
+  try {
+    await api.delete(`/menu_items/${id}`);
+    await loadSetupLists();
+    toast.success('Menu item removed successfully');
+    message.value = "Menu item removed successfully.";
+  } catch(e) {
+    toast.error('Failed to remove menu item');
+  }
 }
 
 async function saveStaffMember() {
@@ -428,9 +438,11 @@ async function saveStaffMember() {
       staff_role: "server"
     });
     await loadSetupLists();
+    toast.success('Staff member added successfully');
     message.value = "Staff member added.";
   } catch (requestError) {
     error.value = requestError?.response?.data?.message || "Unable to add the staff member.";
+    toast.error(error.value);
   } finally {
     saving.value = false;
   }
@@ -451,9 +463,11 @@ async function updateStaffRole(member, role) {
       staff_role: role
     });
     await loadSetupLists();
+    toast.success(`${member.name}'s role updated successfully`);
     message.value = `${member.name}'s staff role was updated successfully.`;
   } catch (requestError) {
     error.value = requestError?.response?.data?.message || "Unable to update the staff role.";
+    toast.error(error.value);
   } finally {
     saving.value = false;
   }
@@ -461,9 +475,14 @@ async function updateStaffRole(member, role) {
 
 async function removeStaffMember(id) {
   message.value = "";
-  await api.delete(`/users/${id}`);
-  await loadSetupLists();
-  message.value = "Staff member removed successfully.";
+  try {
+    await api.delete(`/users/${id}`);
+    await loadSetupLists();
+    toast.success('Staff member removed successfully');
+    message.value = "Staff member removed successfully.";
+  } catch(e) {
+    toast.error('Failed to remove staff member');
+  }
 }
 
 async function saveTable() {
@@ -485,9 +504,11 @@ async function saveTable() {
       location: ""
     });
     await loadSetupLists();
+    toast.success('Table added successfully');
     message.value = "Table added.";
   } catch (requestError) {
     error.value = requestError?.response?.data?.message || "Unable to add the table.";
+    toast.error(error.value);
   } finally {
     saving.value = false;
   }
@@ -495,9 +516,14 @@ async function saveTable() {
 
 async function removeTable(id) {
   message.value = "";
-  await api.delete(`/tables/${id}`);
-  await loadSetupLists();
-  message.value = "Table removed successfully.";
+  try {
+    await api.delete(`/tables/${id}`);
+    await loadSetupLists();
+    toast.success('Table removed successfully');
+    message.value = "Table removed successfully.";
+  } catch(e) {
+    toast.error('Failed to remove table');
+  }
 }
 
 async function finishSetup() {

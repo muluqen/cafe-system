@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Responses\ApiResponse;
 use App\Models\Preference;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * Handles user preference CRUD.
+ */
 class PreferenceController extends BaseApiController
 {
     protected array $allowedRoles = ['restaurant', 'customer'];
@@ -26,16 +31,22 @@ class PreferenceController extends BaseApiController
     {
         return [
             'user_id' => ['nullable', 'exists:users,id'],
-            'key' => [$updating ? 'sometimes' : 'required', 'string', 'max:120'],
-            'value' => ['nullable', 'string'],
+            'key'     => [$updating ? 'sometimes' : 'required', 'string', 'max:120'],
+            'value'   => ['nullable', 'string'],
         ];
     }
 
+    /**
+     * Scope preferences to the authenticated user.
+     */
     protected function scopedQuery(Request $request): Builder
     {
         return Preference::query()->with($this->with)->where('user_id', $request->user()->id);
     }
 
+    /**
+     * Always set user_id to the authenticated user.
+     */
     protected function mutateValidated(array $validated, Request $request, ?int $restaurantId, bool $updating = false): array
     {
         $validated['user_id'] = $request->user()->id;

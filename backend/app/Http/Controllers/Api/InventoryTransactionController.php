@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Responses\ApiResponse;
 use App\Models\InventoryTransaction;
+use Illuminate\Http\JsonResponse;
 
+/**
+ * Handles inventory transaction CRUD.
+ */
 class InventoryTransactionController extends BaseApiController
 {
     protected array $allowedRoles = ['restaurant'];
-    protected array $allowedStaffRoles = ['manager'];
-    protected array $mutableStaffRoles = ['manager'];
+    protected array $allowedStaffRoles = ['manager', 'inventory'];
+    protected array $mutableStaffRoles = ['manager', 'inventory'];
 
     protected array $searchable = ['type', 'reference_type', 'note'];
 
@@ -22,15 +27,15 @@ class InventoryTransactionController extends BaseApiController
     protected function rules(bool $updating = false): array
     {
         return [
-            'ingredient_id' => [$updating ? 'sometimes' : 'required', 'exists:ingredients,id'],
-            'restaurant_id' => [$updating ? 'sometimes' : 'required', 'exists:restaurants,id'],
-            'type' => [$updating ? 'sometimes' : 'required', 'in:in,out,adjust'],
-            'quantity' => [$updating ? 'sometimes' : 'required', 'numeric'],
-            'balance_after' => ['nullable', 'numeric'],
-            'reference_type' => ['nullable', 'string', 'max:100'],
-            'reference_id' => ['nullable', 'integer', 'min:1'],
-            'note' => ['nullable', 'string'],
-            'transacted_at' => [$updating ? 'sometimes' : 'required', 'date'],
+            'ingredient_id'   => [$updating ? 'sometimes' : 'required', 'exists:ingredients,id'],
+            'restaurant_id'   => ['sometimes', 'nullable', 'exists:restaurants,id'],
+            'type'            => [$updating ? 'sometimes' : 'required', 'in:in,out,adjust'],
+            'quantity'        => [$updating ? 'sometimes' : 'required', 'numeric'],
+            'balance_after'   => ['nullable', 'numeric'],
+            'reference_type'  => ['nullable', 'string', 'max:100'],
+            'reference_id'    => ['nullable', 'integer', 'min:1'],
+            'note'            => ['nullable', 'string'],
+            'transacted_at'   => [$updating ? 'sometimes' : 'required', 'date'],
         ];
     }
 }

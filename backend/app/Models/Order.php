@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Order extends Model
 {
@@ -30,6 +31,17 @@ class Order extends Model
         'closed_at' => 'datetime',
     ];
 
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        static::creating(function (Order $order): void {
+            if (empty($order->order_number)) {
+                $order->order_number = 'ORD-' . strtoupper(Str::random(6));
+            }
+        });
+    }
+
     public function restaurant(): BelongsTo
     {
         return $this->belongsTo(Restaurant::class);
@@ -46,6 +58,11 @@ class Order extends Model
     }
 
     public function items(): HasMany
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    public function orderItems(): HasMany
     {
         return $this->hasMany(OrderItem::class);
     }

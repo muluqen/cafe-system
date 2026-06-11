@@ -1,0 +1,716 @@
+<template>
+  <section class="entity-view">
+    <!-- Access Denied -->
+    <div v-if="!hasAccess" class="access-denied">
+      <div class="access-denied__icon">🚫</div>
+      <h3 class="access-denied__title">Access Denied</h3>
+      <p>Your role <strong>{{ auth.staffRole }}</strong> does not have permission to view <strong>{{ entity.label }}</strong>.</p>
+    </div>
+
+    <template v-else>
+    <!-- Toolbar -->
+    <div class="entity-toolbar">
+      <div>
+        <span class="eyebrow">{{ entity.label }}</span>
+        <h1 class="panel-title">{{ entity.label }}</h1>
+      </div>
+      <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+        <input
+          v-model="search"
+          class="entity-search"
+          type="search"
+          :placeholder="`Search ${entity.label.toLowerCase()}...`"
+          @keyup.enter="load"
+        />
+        <button class="btn btn-secondary" :disabled="store.loading" @click="load">
+          {{ store.loading ? "Loading..." : "Refresh" }}
+        </button>
+        <button
+          v-if="canCreate"
+          class="btn btn-primary"
+          :disabled="store.saving"
+          @click="startCreate"
+        >
+          + New
+        </button>
+      </div>
+    </div>
+
+    <p v-if="store.error" style="color: #F43F5E; margin-bottom: 1rem;">{{ store.error }}</p>
+    <div v-if="successMessage" class="badge badge-success" style="margin-bottom: 1rem; padding: 0.5rem 1rem;">
+      {{ successMessage }}
+    </div>
+
+    <!-- Table -->
+    <div v-if="rows.length" class="entity-table-wrapper">
+      <table class="entity-table">
+        <thead>
+          <tr>
+            <th v-for="key in columns" :key="key">
+              {{ labelize(key) }}
+            </th>
+            <th style="width: 120px; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in rows" :key="row.id || row.uuid || JSON.stringify(row)">
+            <td v-for="key in columns" :key="`${row.id || row.uuid}-${key}`">
+              <!-- Boolean formatting as badges -->
+              <span v-if="typeof row[key] === 'boolean'" :class="['badge', row[key] ? 'badge-success' : 'badge-neutral']">
+                {{ row[key] ? 'Active' : 'Inactive' }}
+              </span>
+              
+              <!-- Price formatting -->
+              <span v-else-if="['price', 'amount', 'total', 'subtotal', 'tax'].includes(key)" style="color: #FF3CAC; font-weight: 700;">
+                ${{ Number(row[key] || 0).toFixed(2) }}
+              </span>
+
+              <!-- Ingredients stock coloring -->
+              <span v-else-if="key === 'current_stock' && entity.key === 'ingredients'" :class="getStockClass(row)">
+                {{ formatRowValue(key, row[key]) }}
+                <span v-if="isLowStock(row)"> ⚠️</span>
+              </span>
+
+              <!-- Default cell format -->
+              <span v-else>
+                {{ formatRowValue(key, row[key]) }}
+              </span>
+            </td>
+            <td>
+              <div class="actions">
+                <button v-if="canEdit(row)" class="btn-edit" @click="startEdit(row)" title="Edit">
+                  Edit
+                </button>
+                <button
+                  v-if="canDelete"
+                  class="btn-delete"
+                  @click="confirmDelete(row)"
+                  title="Delete"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Empty State -->
+    <div v-else class="empty-state">
+      <div class="empty-state__icon">📋</div>
+      <h3 class="empty-state__title">No {{ entity.label.toLowerCase() }} yet</h3>
+      <p class="empty-state__text">Get started by creating your first record using the <strong>+ New</strong> button above.</p>
+    </div>
+
+    <!-- ═══════════ MODAL: Create / Edit Form ═══════════ -->
+    <div v-if="formOpen" class="modal-overlay" @click.self="closeForm">
+      <div class="modal-card">
+
+        <!-- Modal Header -->
+        <div class="modal-header">
+          <h2 class="modal-title">{{ editId ? "Edit" : "Create" }} {{ entity.label }}</h2>
+          <button class="modal-close" @click="closeForm" title="Close">✕</button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="modal-body">
+          <form class="crud-form" @submit.prevent="save">
+
+            <!-- Error Banner -->
+            <div v-if="formError" class="form-error-banner">
+              <span class="form-error-icon">⚠️</span>
+              <div>
+                <strong>Something went wrong</strong>
+                <p>{{ formError }}</p>
+              </div>
+            </div>
+
+            <!-- Section: Core Fields -->
+            <div class="form-section">
+              <div class="form-section-header">
+                <span class="form-section-icon">📝</span>
+                <span class="form-section-title">Core Details</span>
+              </div>
+              <div class="form-fields-grid">
+                <label v-for="field in editableFields" :key="field" :class="{ 'field-full-width': field === 'description' || field === 'notes' || field === 'note' }">
+                  <span class="form-label">{{ labelize(field) }}</span>
+                  
+                  <select v-if="field === 'staff_role'" v-model="form[field]" class="form-select">
+                    <option value="manager">Owner</option>
+                    <option v-for="role in staffRoleOptions" :key="role.value" :value="role.value">
+                      {{ role.label }}
+                    </option>
+                  </select>
+
+                  <select v-else-if="field.endsWith('_id')" v-model="form[field]" class="form-select">
+                    <option value="">-- Select --</option>
+                    <option v-for="opt in getOptionsForField(field)" :key="opt.id" :value="opt.id">
+                      {{ opt.name || opt.title || opt.label || `ID: #${opt.id}` }}
+                    </option>
+                  </select>
+
+                  <div v-else-if="field.startsWith('is_') || field.startsWith('has_')" class="toggle-switch-wrapper">
+                    <input v-model="form[field]" type="checkbox" class="toggle-switch" />
+                    <span class="toggle-label">
+                      {{ form[field] ? 'Enabled' : 'Disabled' }}
+                    </span>
+                  </div>
+
+                  <textarea v-else-if="field === 'description' || field === 'notes' || field === 'note'" v-model="form[field]" class="form-textarea" rows="3"></textarea>
+
+                  <input v-else-if="['price', 'amount', 'total', 'subtotal', 'tax', 'quantity', 'capacity', 'guest_count'].includes(field) || field.endsWith('_minutes')" v-model="form[field]" class="form-input" type="number" step="any" />
+
+                  <input v-else-if="field.endsWith('_at')" v-model="form[field]" class="form-input" type="datetime-local" />
+
+                  <input v-else v-model="form[field]" class="form-input" type="text" />
+                </label>
+              </div>
+            </div>
+
+            <!-- Section: Recipe Ingredients (Menu Items only) -->
+            <div v-if="entity.key === 'menu_items'" class="form-section form-section-special">
+              <div class="form-section-header">
+                <span class="form-section-icon">🧑‍🍳</span>
+                <span class="form-section-title">Recipe Costing & Customizer</span>
+              </div>
+              <p class="form-section-desc">Type ingredient names and cost details. These dynamically configure the customizer list and calculate margins in real time.</p>
+              
+              <!-- Ingredient Grid -->
+              <div class="builder-grid-wrap">
+                <div class="builder-grid-header">
+                  <div>Ingredient</div>
+                  <div>Cost ($)</div>
+                  <div>Unit</div>
+                  <div>Qty</div>
+                  <div></div>
+                </div>
+                
+                <div class="builder-grid-body">
+                  <div v-if="!form.ingredients || !form.ingredients.length" class="builder-empty">
+                    No ingredients added yet. Click below to start building your recipe.
+                  </div>
+                  
+                  <div v-for="(row, idx) in form.ingredients" :key="idx" class="builder-grid-row">
+                    <input type="text" placeholder="e.g. Beef" v-model="row.name" class="input builder-input" required />
+                    <input type="number" step="any" min="0" placeholder="0.00" v-model.number="row.cost_per_unit" class="input builder-input" required />
+                    <input type="text" placeholder="kg" v-model="row.unit" class="input builder-input" required />
+                    <input type="number" step="any" min="0" placeholder="1" v-model.number="row.quantity_required" class="input builder-input" required />
+                    <button type="button" @click="removeRecipeRow(idx)" class="builder-remove-btn" title="Remove">✕</button>
+                  </div>
+                </div>
+              </div>
+
+              <button type="button" @click="addRecipeRow" class="builder-add-btn">
+                + Add Ingredient
+              </button>
+              
+              <!-- Cost Summary -->
+              <div class="cost-summary-bar">
+                <div class="cost-summary-item">
+                  <span class="cost-summary-label">Total Raw Cost</span>
+                  <span class="cost-summary-value cost-summary-primary">${{ calculatedIngredientCost.toFixed(2) }}</span>
+                </div>
+                <div class="cost-summary-item">
+                  <span class="cost-summary-label">Calculated Margin</span>
+                  <span class="cost-summary-value cost-summary-green">{{ calculatedMarginPercent }}%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section: Access Permissions (Users only) -->
+            <div v-if="entity.key === 'users'" class="form-section form-section-special">
+              <div class="form-section-header">
+                <span class="form-section-icon">🔐</span>
+                <span class="form-section-title">Access & Security Permissions</span>
+              </div>
+              <p class="form-section-desc">Configure fine-grained access permissions for this employee across core business modules.</p>
+              
+              <div class="builder-grid-wrap">
+                <div class="builder-grid-header builder-grid-3col">
+                  <div>System Module</div>
+                  <div style="text-align: center;">Read</div>
+                  <div style="text-align: center;">Write</div>
+                </div>
+                
+                <div class="builder-grid-body">
+                  <div v-for="perm in form.permissions" :key="perm.entity_key" class="builder-grid-row builder-grid-3col perm-row">
+                    <span class="perm-module-name">{{ labelize(perm.entity_key) }}</span>
+                    
+                    <div class="perm-toggle-cell">
+                      <div class="toggle-switch-wrapper compact">
+                        <input v-model="perm.can_read" type="checkbox" class="toggle-switch" />
+                        <span class="toggle-label-sm">{{ perm.can_read ? 'On' : 'Off' }}</span>
+                      </div>
+                    </div>
+                    
+                    <div class="perm-toggle-cell">
+                      <div class="toggle-switch-wrapper compact">
+                        <input v-model="perm.can_write" type="checkbox" class="toggle-switch" />
+                        <span class="toggle-label-sm">{{ perm.can_write ? 'On' : 'Off' }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Submit -->
+            <div class="modal-footer" style="border-top: none; padding: 0;">
+              <button type="button" class="btn btn-secondary" @click="closeForm">Cancel</button>
+              <button class="btn btn-primary" :disabled="store.saving" type="submit">
+                {{ store.saving ? "Saving..." : editId ? "Save Changes" : "Create Record" }}
+              </button>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══════════ MODAL: Delete Confirmation ═══════════ -->
+    <div v-if="deleteModalOpen" class="modal-overlay" @click.self="deleteModalOpen = false">
+      <div class="modal-card" style="max-width: 400px;">
+        <div class="modal-header">
+          <h2 class="modal-title">Delete Record</h2>
+          <button class="modal-close" @click="deleteModalOpen = false" title="Close">✕</button>
+        </div>
+        <div class="modal-body">
+          <p style="color: #A1A1AA;">Are you sure you want to delete this {{ entity.label.toLowerCase() }} record? This action cannot be undone.</p>
+          <div class="modal-footer" style="border-top: none; padding: 0; margin-top: 1rem;">
+            <button class="btn btn-secondary" @click="deleteModalOpen = false">Cancel</button>
+            <button class="btn btn-danger" @click="remove">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    </template>
+  </section>
+</template>
+
+<script setup>
+import { computed, onMounted, ref, watch } from "vue";
+import api from "../services/api";
+import { useEntityStore } from "../stores/entityStore";
+import { useAuthStore } from "../stores/authStore";
+import { getStaffRoleMeta, staffRoleOptions } from "../utils/staffRoles";
+
+const props = defineProps({
+  entity: {
+    type: Object,
+    required: true
+  }
+});
+
+const store = useEntityStore();
+const auth = useAuthStore();
+const search = ref("");
+const formOpen = ref(false);
+const editId = ref(null);
+const form = ref({});
+const successMessage = ref("");
+const formError = ref("");
+const optionsCache = ref({});
+const deleteModalOpen = ref(false);
+const deleteTarget = ref(null);
+
+// Endpoint mapping: entity key → API endpoint
+const endpointMap = {
+  tables: "dining_tables",
+};
+
+function getEndpoint(entityKey) {
+  return endpointMap[entityKey] || entityKey;
+}
+
+// Access check
+const hasAccess = computed(() => {
+  if (auth.staffRole === "manager") return true;
+  if (!props.entity.staffRoles) return true;
+  return props.entity.staffRoles.includes(auth.staffRole);
+});
+
+// Stock helpers for ingredients
+function isLowStock(row) {
+  if (props.entity.key !== "ingredients") return false;
+  const stock = Number(row.current_stock || 0);
+  const reorder = Number(row.reorder_level || 0);
+  return stock <= reorder;
+}
+
+function getStockClass(row) {
+  if (isLowStock(row)) return "stock-danger";
+  return "stock-ok";
+}
+
+async function loadOptionsForField(field) {
+  if (!field.endsWith('_id')) return;
+  
+  let endpoint = field.replace('_id', 's');
+  if (field === 'menu_category_id') endpoint = 'menu_categories';
+  if (field === 'ingredient_id') endpoint = 'ingredients';
+  if (field === 'inventory_id') endpoint = 'inventory_transactions';
+  
+  if (optionsCache.value[field]) return;
+  
+  try {
+    const params = { per_page: 200 };
+    if (auth.user?.restaurant_id) params.restaurant_id = auth.user.restaurant_id;
+    const res = await api.get(`/${endpoint}`, { params });
+    optionsCache.value[field] = res.data?.data || res.data || [];
+  } catch (err) {
+    console.warn("Failed to load options for", field, err);
+    optionsCache.value[field] = [];
+  }
+}
+
+function getOptionsForField(field) {
+  return optionsCache.value[field] || [];
+}
+
+const rows = computed(() => store.byEntity[props.entity.key] || []);
+const hiddenColumns = ["created_at", "updated_at", "deleted_at", "restaurant"];
+
+const preferredFields = computed(() =>
+  props.entity.fields?.length
+    ? props.entity.fields
+    : []
+);
+
+const columns = computed(() => {
+  const first = rows.value[0];
+  if (!first || typeof first !== "object") {
+    return [];
+  }
+
+  const preferred = ["id", ...preferredFields.value];
+  const available = Object.keys(first).filter((key) => !hiddenColumns.includes(key));
+  const ordered = preferred.filter((key) => available.includes(key));
+  const extras = available.filter((key) => !ordered.includes(key) && typeof first[key] !== "object");
+
+  return [...ordered, ...extras].slice(0, 7);
+});
+const editableFields = computed(() =>
+  props.entity.fields?.length
+    ? props.entity.fields
+    : columns.value.filter((field) => !["id", "created_at", "updated_at"].includes(field))
+);
+const canMutateForStaff = computed(() => {
+  if (!auth.isRestaurant) return true;
+  if (auth.staffRole === 'manager') return true;
+
+  // 1. Check user override permission
+  let dynamicPerm = Array.isArray(auth.rolePermissions) 
+    ? auth.rolePermissions.find(p => p.entity_key === props.entity.key && Number(p.user_id) === Number(auth.user?.id))
+    : null;
+
+  // 2. Check role default permission if no user override is present
+  if (!dynamicPerm && Array.isArray(auth.rolePermissions)) {
+    dynamicPerm = auth.rolePermissions.find(p => p.entity_key === props.entity.key && p.staff_role === auth.staffRole && !p.user_id);
+  }
+
+  if (dynamicPerm) return !!dynamicPerm.can_write;
+
+  return (
+    !props.entity.mutateStaffRoles ||
+    props.entity.mutateStaffRoles.includes(auth.staffRole)
+  );
+});
+
+const canCreate = computed(() => {
+  if (auth.isCustomer && props.entity.key === "users") {
+    return false;
+  }
+
+  return canMutateForStaff.value;
+});
+
+const canDelete = computed(() => {
+  if (auth.isCustomer) {
+    return false;
+  }
+
+  return canMutateForStaff.value;
+});
+
+function formatCell(value) {
+  if (value === null || value === undefined) {
+    return "-";
+  }
+
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "No";
+  }
+
+  if (typeof value === "string" && value.includes("T") && !Number.isNaN(Date.parse(value))) {
+    return new Date(value).toLocaleString();
+  }
+
+  if (typeof value === "object") {
+    return value.name || value.title || value.label || "#linked";
+  }
+
+  return String(value);
+}
+
+function formatRowValue(key, value) {
+  if (key === "staff_role") {
+    return getStaffRoleMeta(value || "manager").label;
+  }
+
+  return formatCell(value);
+}
+
+function labelize(value) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function load() {
+  successMessage.value = "";
+  const endpoint = getEndpoint(props.entity.key);
+  const params = {};
+  if (search.value.trim()) params.search = search.value.trim();
+  if (auth.user?.restaurant_id) params.restaurant_id = auth.user.restaurant_id;
+  params.per_page = 50;
+  return store.fetchEntities(endpoint, params);
+}
+
+function canEdit(row) {
+  if (auth.isRestaurant && !canMutateForStaff.value) {
+    return false;
+  }
+  if (auth.isRestaurant) {
+    return true;
+  }
+  if (auth.isCustomer && props.entity.key === "users") {
+    return row.id === auth.user?.id;
+  }
+  return true;
+}
+
+function startCreate() {
+  editId.value = null;
+  formError.value = "";
+  form.value = Object.fromEntries(
+    editableFields.value.map((field) => {
+      if (field.startsWith('is_') || field.startsWith('has_')) return [field, false];
+      return [field, ""];
+    })
+  );
+  if (Object.prototype.hasOwnProperty.call(form.value, "staff_role")) {
+    form.value.staff_role = "server";
+  }
+  if (props.entity.key === 'menu_items') {
+    form.value.ingredients = [
+      { name: "", cost_per_unit: 1.00, unit: "pcs", quantity_required: 1.0 }
+    ];
+  }
+  if (props.entity.key === 'users') {
+    const modules = ["menu_items", "menu_categories", "orders", "ingredients", "tables", "shifts", "payment_events"];
+    form.value.permissions = modules.map(key => ({
+      entity_key: key,
+      can_read: false,
+      can_write: false
+    }));
+  }
+  formOpen.value = true;
+  editableFields.value.filter(f => f.endsWith('_id')).forEach(loadOptionsForField);
+}
+
+function startEdit(row) {
+  editId.value = row.id;
+  formError.value = "";
+  form.value = Object.fromEntries(
+    editableFields.value.map((field) => {
+      if (field.startsWith('is_') || field.startsWith('has_')) {
+        return [field, !!row[field]];
+      }
+      if (field.endsWith('_at') && row[field]) {
+        return [field, String(row[field]).substring(0, 16)];
+      }
+      return [field, row[field] === null ? "" : String(row[field])];
+    })
+  );
+  if (props.entity.key === 'menu_items') {
+    if (row.recipe_ingredients) {
+      form.value.ingredients = row.recipe_ingredients.map(ri => ({
+        ingredient_id: ri.ingredient_id,
+        name: ri.ingredient ? ri.ingredient.name : "",
+        cost_per_unit: ri.ingredient ? Number(ri.ingredient.cost_per_unit) : 0,
+        unit: ri.ingredient ? ri.ingredient.unit : "pcs",
+        quantity_required: Number(ri.quantity_required)
+      }));
+    } else {
+      form.value.ingredients = [];
+    }
+  }
+  if (props.entity.key === 'users') {
+    const modules = ["menu_items", "menu_categories", "orders", "ingredients", "tables", "shifts", "payment_events"];
+    form.value.permissions = modules.map(key => {
+      const existing = (row.permissions || []).find(p => p.entity_key === key);
+      return {
+        entity_key: key,
+        can_read: existing ? !!existing.can_read : false,
+        can_write: existing ? !!existing.can_write : false
+      };
+    });
+  }
+  formOpen.value = true;
+  editableFields.value.filter(f => f.endsWith('_id')).forEach(loadOptionsForField);
+}
+
+function closeForm() {
+  formOpen.value = false;
+}
+
+function normalizePayload(source) {
+  const payload = {};
+  Object.keys(source).forEach((key) => {
+    const value = source[key];
+    if (key === 'permissions' || key === 'ingredients') {
+      payload[key] = value;
+      return;
+    }
+
+    if (value === "") {
+      payload[key] = null;
+      return;
+    }
+
+    if (value === "true" || value === true) {
+      payload[key] = true;
+      return;
+    }
+
+    if (value === "false" || value === false) {
+      payload[key] = false;
+      return;
+    }
+
+    if (['price', 'amount', 'total', 'subtotal', 'tax', 'quantity', 'capacity', 'guest_count'].includes(key) || key.endsWith('_minutes')) {
+      if (value !== null && value !== "") payload[key] = Number(value);
+      return;
+    }
+    
+    if (key.endsWith('_id') && key !== 'restaurant_id') {
+      if (value !== null && value !== "") payload[key] = Number(value);
+      return;
+    }
+
+    payload[key] = value;
+  });
+
+  return payload;
+}
+
+let successTimeout = null;
+function showSuccessMessage(msg) {
+  successMessage.value = msg;
+  if (successTimeout) clearTimeout(successTimeout);
+  successTimeout = setTimeout(() => {
+    successMessage.value = "";
+  }, 3000);
+}
+
+async function save() {
+  formError.value = "";
+  try {
+    const payload = normalizePayload(form.value);
+    
+    if (payload.ingredients && Array.isArray(payload.ingredients)) {
+      payload.ingredients = payload.ingredients.filter(ri => ri.name && String(ri.name).trim() !== "");
+    }
+    
+    // Auto-set restaurant_id for create
+    if (!editId.value && auth.isRestaurant && auth.user?.restaurant_id) {
+      payload.restaurant_id = auth.user.restaurant_id;
+    }
+
+    const endpoint = getEndpoint(props.entity.key);
+    const action = editId.value ? "updated" : "created";
+    if (editId.value) {
+      await store.updateEntity(endpoint, editId.value, payload);
+    } else {
+      await store.createEntity(endpoint, payload);
+    }
+    await load();
+    showSuccessMessage(`${props.entity.label} ${action} successfully.`);
+    closeForm();
+  } catch (err) {
+    formError.value = err?.response?.data?.message || err?.message || "An error occurred while saving. Please check your inputs.";
+  }
+}
+
+function confirmDelete(row) {
+  deleteTarget.value = row;
+  deleteModalOpen.value = true;
+}
+
+async function remove() {
+  if (!deleteTarget.value?.id) {
+    deleteModalOpen.value = false;
+    return;
+  }
+  const endpoint = getEndpoint(props.entity.key);
+  await store.deleteEntity(endpoint, deleteTarget.value.id);
+  deleteModalOpen.value = false;
+  deleteTarget.value = null;
+  await load();
+  showSuccessMessage(`${props.entity.label} removed successfully.`);
+}
+
+watch(
+  () => props.entity.key,
+  () => {
+    search.value = "";
+    load();
+  }
+);
+
+// Recipe cost builders
+const availableIngredientsList = computed(() => {
+  return optionsCache.value['ingredient_id'] || [];
+});
+
+function getRowCost(row) {
+  return Number(row.cost_per_unit || 0) * Number(row.quantity_required || 0);
+}
+
+function addRecipeRow() {
+  if (!form.value.ingredients) form.value.ingredients = [];
+  form.value.ingredients.push({
+    name: "",
+    cost_per_unit: 1.00,
+    unit: "pcs",
+    quantity_required: 1.0
+  });
+}
+
+function removeRecipeRow(idx) {
+  if (!form.value.ingredients) return;
+  form.value.ingredients.splice(idx, 1);
+}
+
+const calculatedIngredientCost = computed(() => {
+  if (!form.value.ingredients) return 0;
+  return form.value.ingredients.reduce((sum, ri) => {
+    return sum + getRowCost(ri);
+  }, 0);
+});
+
+const calculatedMarginPercent = computed(() => {
+  const price = Number(form.value.price || 0);
+  if (price <= 0) return 0;
+  const cost = calculatedIngredientCost.value;
+  return Math.round(((price - cost) / price) * 100);
+});
+
+onMounted(() => {
+  load();
+  if (props.entity.key === 'menu_items') {
+    loadOptionsForField('ingredient_id');
+  }
+});
+</script>

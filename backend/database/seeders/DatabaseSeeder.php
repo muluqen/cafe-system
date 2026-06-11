@@ -10,6 +10,9 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             CafeSystemSeeder::class,
+            SuperAdminSeeder::class,
+            DefaultPermissionsSeeder::class,
+            DineDirectSeeder::class,
         ]);
     }
 }

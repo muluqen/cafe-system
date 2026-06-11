@@ -8,6 +8,7 @@ class RolePermission extends Model
 {
     protected $fillable = [
         'restaurant_id',
+        'user_id',
         'staff_role',
         'entity_key',
         'can_read',
@@ -17,5 +18,10 @@ class RolePermission extends Model
     public function restaurant()
     {
         return $this->belongsTo(Restaurant::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
     }
 }

@@ -1,200 +1,155 @@
 <template>
-  <section class="customer-stack" :style="themeStyle">
-    <section class="panel rewards-hero">
-      <div>
-        <span class="eyebrow">Guest Journey</span>
-        <h1 class="panel-title">Your progress with {{ selectedRestaurantName }}</h1>
-        <p class="muted">
-          See how often you visit, how much you have explored, and what unlocks next when you keep ordering here.
-        </p>
-      </div>
-      <div class="rewards-tier">
-        <span class="selector-label">Current tier</span>
-        <strong>{{ loyalty.tier }}</strong>
-        <p class="muted">{{ loyalty.tierMessage }}</p>
-      </div>
-    </section>
+  <div class="customer-rewards">
+    <PageHeader title="My Rewards" />
 
-    <section class="panel">
-      <header class="panel-header panel-header-rich">
-        <div>
-          <span class="eyebrow">Snapshot</span>
-          <h2 class="panel-title">Your restaurant relationship</h2>
+    <!-- Points Card -->
+    <div class="points-card">
+      <div class="points-card__value">{{ totalPoints }}</div>
+      <div class="points-card__label">Points</div>
+      <div class="points-card__subtitle">Earn 10 points per order</div>
+      <div class="points-card__progress">
+        <div class="progress-bar">
+          <div class="progress-bar__fill" :style="{ width: progressPercent + '%' }" />
         </div>
-      </header>
-
-      <div class="content-pad rewards-grid">
-        <article class="metric-card">
-          <span class="selector-label">Visits</span>
-          <strong>{{ loyalty.visitCount }}</strong>
-          <p class="muted">Completed orders with this restaurant.</p>
-        </article>
-        <article class="metric-card">
-          <span class="selector-label">Spent</span>
-          <strong>${{ loyalty.totalSpent.toFixed(2) }}</strong>
-          <p class="muted">Total spend across your orders here.</p>
-        </article>
-        <article class="metric-card">
-          <span class="selector-label">Favorites</span>
-          <strong>{{ loyalty.favoriteCount }}</strong>
-          <p class="muted">Different menu items you keep coming back to.</p>
-        </article>
-        <article class="metric-card">
-          <span class="selector-label">Progress</span>
-          <strong>{{ loyalty.points }} pts</strong>
-          <p class="muted">{{ loyalty.pointsToNext }} points to {{ loyalty.nextTier }}.</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="panel">
-      <header class="panel-header">
-        <div>
-          <span class="eyebrow">Unlocks</span>
-          <h2 class="panel-title">What this loyalty can open</h2>
+        <div class="progress-labels">
+          <span :class="['tier-label', { 'tier-label--active': totalPoints >= 0 }]">Bronze</span>
+          <span :class="['tier-label', { 'tier-label--active': totalPoints >= 500 }]">Silver</span>
+          <span :class="['tier-label', { 'tier-label--active': totalPoints >= 1500 }]">Gold</span>
         </div>
-      </header>
+      </div>
+      <BaseBadge :variant="tierVariant">{{ currentTier }} Member</BaseBadge>
+    </div>
 
-      <div class="content-pad unlock-list">
-        <article v-for="unlock in unlocks" :key="unlock.name" class="unlock-card" :class="{ reached: unlock.reached }">
-          <div class="order-head">
-            <strong>{{ unlock.name }}</strong>
-            <span class="badge">{{ unlock.threshold }} pts</span>
+    <!-- How to Earn -->
+    <div class="section">
+      <h3 class="section__title">How to earn points</h3>
+      <div class="earn-list">
+        <div class="earn-item">
+          <span class="earn-item__icon">📦</span>
+          <div class="earn-item__info">
+            <span class="earn-item__action">Place an order</span>
+            <span class="earn-item__points">+10 points</span>
           </div>
-          <p class="muted">{{ unlock.description }}</p>
-          <div class="progress-track">
-            <span class="progress-bar" :style="{ width: `${unlock.progress}%` }" />
+        </div>
+        <div class="earn-item">
+          <span class="earn-item__icon">💬</span>
+          <div class="earn-item__info">
+            <span class="earn-item__action">Leave feedback</span>
+            <span class="earn-item__points">+5 points</span>
           </div>
-          <p class="muted">
-            {{ unlock.reached ? "Unlocked" : `${unlock.remaining} more points to go` }}
-          </p>
-        </article>
-      </div>
-    </section>
-
-    <section class="panel">
-      <header class="panel-header">
-        <div>
-          <span class="eyebrow">What You Love</span>
-          <h2 class="panel-title">Most ordered dishes</h2>
         </div>
-      </header>
-
-      <div class="content-pad">
-        <div v-if="favoriteItems.length" class="feedback-history">
-          <article v-for="item in favoriteItems" :key="item.name" class="feedback-card">
-            <div class="order-head">
-              <strong>{{ item.name }}</strong>
-              <span class="badge">{{ item.count }} orders</span>
-            </div>
-            <p class="muted">{{ item.quantity }} total plates ordered</p>
-          </article>
-        </div>
-        <div v-else class="empty">
-          Once you place a few orders here, your favorites and unlock progress will show up.
+        <div class="earn-item">
+          <span class="earn-item__icon">👥</span>
+          <div class="earn-item__info">
+            <span class="earn-item__action">Refer a friend</span>
+            <span class="earn-item__points">+20 points</span>
+          </div>
         </div>
       </div>
-    </section>
-  </section>
+    </div>
+
+    <p class="note">Points are calculated from your order history (thesis demo).</p>
+  </div>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from "vue";
-import api from "../services/api";
-import { useAuthStore } from "../stores/authStore";
-import { getRestaurantBranding } from "../utils/restaurantBranding";
+import customerService from "../services/customerService";
+import PageHeader from "../components/ui/PageHeader.vue";
+import BaseBadge from "../components/ui/BaseBadge.vue";
 
-const auth = useAuthStore();
-const orders = ref([]);
+const orderCount = ref(0);
 
-const selectedRestaurantName = computed(() => {
-  const restaurant = auth.publicRestaurants.find(
-    (row) => String(row.id) === String(auth.selectedRestaurantId || "")
-  );
-  return restaurant?.name || "this restaurant";
-});
-const restaurantBranding = computed(() => getRestaurantBranding(auth.selectedRestaurantId));
-const themeStyle = computed(() => ({
-  "--restaurant-brand": restaurantBranding.value.brandColor || "#1A2A40",
-  "--restaurant-brand-soft": `${restaurantBranding.value.brandColor || "#1A2A40"}1f`,
-  "--restaurant-brand-gradient": `linear-gradient(135deg, ${(restaurantBranding.value.brandColors || [restaurantBranding.value.brandColor || "#1A2A40"]).join(", ")})`
-}));
+const totalPoints = computed(() => orderCount.value * 10);
 
-const restaurantOrders = computed(() =>
-  orders.value.filter(
-    (order) =>
-      !auth.selectedRestaurantId ||
-      String(order.restaurant_id || order.restaurant?.id || "") === String(auth.selectedRestaurantId)
-  )
-);
-
-const favoriteItems = computed(() => {
-  const tally = new Map();
-
-  restaurantOrders.value.forEach((order) => {
-    (order.items || []).forEach((item) => {
-      const current = tally.get(item.item_name) || { name: item.item_name, count: 0, quantity: 0 };
-      current.count += 1;
-      current.quantity += Number(item.quantity || 0);
-      tally.set(item.item_name, current);
-    });
-  });
-
-  return [...tally.values()].sort((a, b) => b.quantity - a.quantity).slice(0, 5);
+const currentTier = computed(() => {
+  if (totalPoints.value >= 1500) return "Gold";
+  if (totalPoints.value >= 500) return "Silver";
+  return "Bronze";
 });
 
-const loyalty = computed(() => {
-  const visitCount = restaurantOrders.value.length;
-  const totalSpent = restaurantOrders.value.reduce((sum, order) => sum + Number(order.total || 0), 0);
-  const favoriteCount = favoriteItems.value.length;
-  const points = Math.floor(totalSpent) + visitCount * 8 + favoriteCount * 12;
-
-  const tiers = [
-    { name: "New Regular", min: 0, message: "You have started building a relationship with this place." },
-    { name: "House Favorite", min: 80, message: "You are becoming a familiar face with recognizable taste." },
-    { name: "Inner Circle", min: 180, message: "You order often enough to deserve first-class treatment." },
-    { name: "Chef's Table", min: 320, message: "You have serious loyalty status with this restaurant." }
-  ];
-
-  const currentTier =
-    [...tiers].reverse().find((tier) => points >= tier.min) || tiers[0];
-  const nextTier = tiers.find((tier) => tier.min > points);
-
-  return {
-    visitCount,
-    totalSpent,
-    favoriteCount,
-    points,
-    tier: currentTier.name,
-    tierMessage: currentTier.message,
-    nextTier: nextTier?.name || "top tier",
-    pointsToNext: Math.max(0, (nextTier?.min || points) - points)
-  };
+const tierVariant = computed(() => {
+  if (totalPoints.value >= 1500) return "warning";
+  if (totalPoints.value >= 500) return "info";
+  return "neutral";
 });
 
-const unlocks = computed(() => {
-  const targets = [
-    { name: "Priority Table Ping", threshold: 60, description: "Early heads-up when tables open around your usual times." },
-    { name: "Chef Surprise", threshold: 140, description: "A rotating off-menu extra or tasting recommendation." },
-    { name: "Fast Reorder Lane", threshold: 220, description: "One-tap favorite ordering with a reserved prep note." },
-    { name: "DineDirect Gold Guest", threshold: 340, description: "Top-tier recognition for your most-loved restaurant." }
-  ];
-
-  return targets.map((unlock) => ({
-    ...unlock,
-    reached: loyalty.value.points >= unlock.threshold,
-    remaining: Math.max(0, unlock.threshold - loyalty.value.points),
-    progress: Math.min(100, Math.round((loyalty.value.points / unlock.threshold) * 100))
-  }));
+const progressPercent = computed(() => {
+  if (totalPoints.value >= 1500) return 100;
+  if (totalPoints.value >= 500) return ((totalPoints.value - 500) / 1000) * 100;
+  return (totalPoints.value / 500) * 100;
 });
-
-async function loadOrders() {
-  const { data } = await api.get("/orders", { params: { per_page: 100 } });
-  orders.value = data?.data || [];
-}
 
 onMounted(async () => {
-  await auth.loadPublicRestaurants();
-  await loadOrders();
+  try {
+    const res = await customerService.getMyOrders();
+    const body = res.data;
+    const raw = body?.data;
+    const orders = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : [];
+    orderCount.value = orders.length;
+  } catch {}
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('is-visible')
+        observer.unobserve(entry.target)
+      }
+    })
+  }, { threshold: 0.05 })
+  document.querySelectorAll('.animate-on-scroll').forEach(el => {
+    observer.observe(el)
+  })
 });
 </script>
+
+<style scoped>
+.points-card {
+  background: linear-gradient(135deg, rgba(255,60,172,0.10), rgba(6,182,212,0.08));
+  border: 1px solid rgba(255,60,172,0.2);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-8);
+  text-align: center;
+  color: white;
+  margin-bottom: var(--space-8);
+}
+
+.points-card__value {
+  font-size: var(--text-4xl);
+  font-weight: 800;
+  color: var(--color-primary-light);
+}
+
+.points-card__label { font-size: var(--text-lg); opacity: 0.9; margin-bottom: var(--space-1); }
+.points-card__subtitle { font-size: var(--text-sm); opacity: 0.7; margin-bottom: var(--space-6); }
+
+.points-card__progress { margin-bottom: var(--space-4); }
+.progress-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: var(--radius-full); margin-bottom: var(--space-2); }
+.progress-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, #FF3CAC, #FF6FC8, #06B6D4);
+  background-size: 200% 100%;
+  border-radius: var(--radius-full);
+  transition: width 0.5s;
+  animation: shimmer-progress 2s linear infinite;
+}
+
+@keyframes shimmer-progress {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.progress-labels { display: flex; justify-content: space-between; font-size: var(--text-xs); opacity: 0.8; }
+
+.section { margin-bottom: var(--space-6); }
+.section__title { margin: 0 0 var(--space-4); font-size: var(--text-lg); font-weight: var(--font-semibold); color: var(--color-text-primary); }
+
+.earn-list { display: flex; flex-direction: column; gap: var(--space-3); }
+.earn-item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4); background: var(--color-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.earn-item__icon { font-size: 1.5rem; }
+.earn-item__info { flex: 1; display: flex; justify-content: space-between; }
+.earn-item__action { font-weight: var(--font-medium); color: var(--color-text-primary); }
+.earn-item__points { font-weight: var(--font-bold); color: var(--color-accent); }
+
+.note { font-size: var(--text-sm); color: var(--color-text-muted); text-align: center; }
+</style>

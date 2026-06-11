@@ -38,4 +38,9 @@ class MenuItem extends Model
     {
         return $this->hasMany(OrderItem::class);
     }
+
+    public function recipeIngredients(): HasMany
+    {
+        return $this->hasMany(RecipeIngredient::class);
+    }
 }

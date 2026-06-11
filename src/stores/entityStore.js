@@ -14,11 +14,10 @@ export const useEntityStore = defineStore("entityStore", {
     saving: false
   }),
   actions: {
-    async fetchEntities(entityName, query = "") {
+    async fetchEntities(entityName, params = {}) {
       this.loading = true;
       this.error = "";
       try {
-        const params = query ? { search: query } : {};
         const rows = await getResourceList(entityName, params);
         this.byEntity[entityName] = rows;
       } catch (error) {

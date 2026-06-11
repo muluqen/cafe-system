@@ -96,6 +96,30 @@ export const entities = [
     fields: ["ingredient_id", "type", "quantity", "balance_after", "reference_type", "reference_id", "note", "transacted_at"]
   },
   {
+    key: "kds_kitchen",
+    label: "KDS Kitchen Station",
+    roles: ["restaurant"],
+    staffRoles: ["manager", "floor_manager", "kitchen"],
+    mutateStaffRoles: ["manager", "floor_manager"],
+    fields: []
+  },
+  {
+    key: "kds_barista",
+    label: "KDS Barista Station",
+    roles: ["restaurant"],
+    staffRoles: ["manager", "floor_manager", "barista"],
+    mutateStaffRoles: ["manager", "floor_manager"],
+    fields: []
+  },
+  {
+    key: "kds_expeditor",
+    label: "KDS Expeditor Dashboard",
+    roles: ["restaurant"],
+    staffRoles: ["manager", "floor_manager", "server", "cashier"],
+    mutateStaffRoles: ["manager", "floor_manager"],
+    fields: []
+  },
+  {
     key: "tables",
     label: "Tables",
     roles: ["restaurant"],
@@ -134,5 +158,30 @@ export const entities = [
     staffRoles: [...ownerOnly, "floor_manager", ...paymentsTeam.filter((role) => role !== "manager")],
     mutateStaffRoles: ["manager", "floor_manager", "cashier"],
     fields: ["order_id", "amount", "method", "provider", "provider_reference", "status", "paid_at"]
+  },
+  {
+    key: "role_permissions",
+    label: "Dynamic Access Permissions",
+    roles: ["restaurant"],
+    staffRoles: ownerOnly,
+    mutateStaffRoles: ownerOnly,
+    fields: ["user_id", "staff_role", "entity_key", "can_read", "can_write"]
+  },
+  {
+    key: "restaurant_settings",
+    label: "Settings",
+    icon: "⚙️",
+    roles: ["restaurant"],
+    staffRoles: [...ownerOnly, "floor_manager", "kitchen"],
+    mutateStaffRoles: ownerOnly,
+    fields: ["logo_path", "motto", "banner_message", "today_special_id", "brand_color", "phone", "address", "operating_hours"],
+    isSettings: true,
+    subPermissions: [
+      { key: "restaurant_settings_branding", label: "Branding: Logo, motto, color", description: "Branding" },
+      { key: "restaurant_settings_special", label: "Today's Special: Daily special item", description: "Today's Special" },
+      { key: "restaurant_settings_announcements", label: "Announcements: Banner message", description: "Announcements" },
+      { key: "restaurant_settings_contact", label: "Contact: Phone and address", description: "Contact Info" },
+      { key: "restaurant_settings_hours", label: "Hours: Operating schedule", description: "Operating Hours" },
+    ]
   }
 ];

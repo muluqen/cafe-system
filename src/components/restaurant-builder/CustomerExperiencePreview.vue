@@ -7,7 +7,7 @@
         </div>
         <div v-else class="customer-live-logo-fallback">{{ logoInitials }}</div>
         <div>
-          <span class="eyebrow customer-live-eyebrow">{{ form.name || "Your Restaurant" }} on dinedirect</span>
+          <span class="eyebrow customer-live-eyebrow">{{ form.name || "Your Restaurant" }} on Tavliq</span>
           <h3>{{ form.headline || "Pick your spot, customize your meal, send it to the kitchen." }}</h3>
           <p class="muted">
             {{

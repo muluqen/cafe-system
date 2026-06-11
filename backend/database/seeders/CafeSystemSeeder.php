@@ -29,12 +29,24 @@ class CafeSystemSeeder extends Seeder
     {
         $restaurants = collect([
             [
+                'name' => 'Demo Cafe',
+                'slug' => 'demo-cafe',
+                'phone' => '+1-555-0100',
+                'email' => 'hello@democafe.local',
+                'address' => '100 Demo Street',
+                'is_active' => true,
+                'status' => 'active',
+                'cuisine_type' => 'Coffee & Cafe',
+            ],
+            [
                 'name' => 'Addis Ababa Cafe',
                 'slug' => 'addis-ababa-cafe',
                 'phone' => '+1-555-1000',
                 'email' => 'hello@addiscafe.local',
                 'address' => '123 Main St',
                 'is_active' => true,
+                'status' => 'active',
+                'cuisine_type' => 'Ethiopian',
             ],
             [
                 'name' => 'Lalibela Restaurant',
@@ -43,16 +55,24 @@ class CafeSystemSeeder extends Seeder
                 'email' => 'contact@lalibelarestaurant.local',
                 'address' => '42 River Ave',
                 'is_active' => true,
+                'status' => 'active',
+                'cuisine_type' => 'Fine Dining',
             ],
         ])->map(fn(array $restaurant) => Restaurant::query()->create($restaurant));
 
         $staffUsers = collect([
-            ['name' => 'Addis Manager', 'email' => 'manager@addiscafe.local', 'restaurant_idx' => 0, 'staff_role' => 'manager'],
-            ['name' => 'Addis Cashier', 'email' => 'cashier@addiscafe.local', 'restaurant_idx' => 0, 'staff_role' => 'cashier'],
-            ['name' => 'Addis Barista', 'email' => 'barista@addiscafe.local', 'restaurant_idx' => 0, 'staff_role' => 'barista'],
-            ['name' => 'Lalibela Manager', 'email' => 'manager@lalibelarestaurant.local', 'restaurant_idx' => 1, 'staff_role' => 'manager'],
-            ['name' => 'Lalibela Cashier', 'email' => 'cashier@lalibelarestaurant.local', 'restaurant_idx' => 1, 'staff_role' => 'cashier'],
-            ['name' => 'Lalibela Barista', 'email' => 'barista@lalibelarestaurant.local', 'restaurant_idx' => 1, 'staff_role' => 'barista'],
+            // Demo Cafe staff
+            ['name' => 'Demo Manager', 'email' => 'manager@tavliq.com', 'restaurant_idx' => 0, 'staff_role' => 'manager'],
+            ['name' => 'Demo Cashier', 'email' => 'cashier@tavliq.com', 'restaurant_idx' => 0, 'staff_role' => 'cashier'],
+            ['name' => 'Demo Kitchen', 'email' => 'kitchen@tavliq.com', 'restaurant_idx' => 0, 'staff_role' => 'kitchen'],
+            // Addis Ababa Cafe staff
+            ['name' => 'Addis Manager', 'email' => 'manager@addiscafe.local', 'restaurant_idx' => 1, 'staff_role' => 'manager'],
+            ['name' => 'Addis Cashier', 'email' => 'cashier@addiscafe.local', 'restaurant_idx' => 1, 'staff_role' => 'cashier'],
+            ['name' => 'Addis Barista', 'email' => 'barista@addiscafe.local', 'restaurant_idx' => 1, 'staff_role' => 'barista'],
+            // Lalibela Restaurant staff
+            ['name' => 'Lalibela Manager', 'email' => 'manager@lalibelarestaurant.local', 'restaurant_idx' => 2, 'staff_role' => 'manager'],
+            ['name' => 'Lalibela Cashier', 'email' => 'cashier@lalibelarestaurant.local', 'restaurant_idx' => 2, 'staff_role' => 'cashier'],
+            ['name' => 'Lalibela Barista', 'email' => 'barista@lalibelarestaurant.local', 'restaurant_idx' => 2, 'staff_role' => 'barista'],
         ])->map(function (array $user) use ($restaurants) {
             return User::query()->create([
                 'name' => $user['name'],
@@ -65,6 +85,7 @@ class CafeSystemSeeder extends Seeder
         });
 
         $customerUsers = collect([
+            ['name' => 'Test Customer', 'email' => 'customer@tavliq.com'],
             ['name' => 'Customer One', 'email' => 'customer1@cafesystem.local'],
             ['name' => 'Customer Two', 'email' => 'customer2@cafesystem.local'],
             ['name' => 'Customer Three', 'email' => 'customer3@cafesystem.local'],
@@ -91,57 +112,163 @@ class CafeSystemSeeder extends Seeder
         }
 
         foreach ($restaurants as $restaurant) {
-            $categories = collect([
-                ['name' => 'Mains (Wots & Tibs)', 'display_order' => 1],
-                ['name' => 'Vegetarian (Yetsom)', 'display_order' => 2],
-                ['name' => 'Drinks', 'display_order' => 3],
-            ])->map(fn(array $category) => MenuCategory::query()->create([
-                'restaurant_id' => $restaurant->id,
-                'name' => $category['name'],
-                'display_order' => $category['display_order'],
-                'is_active' => true,
-            ]));
-
-            $menuItems = collect([
-                ['category' => 'Mains (Wots & Tibs)', 'name' => 'Doro Wat', 'price' => 18.50, 'prep' => 25],
-                ['category' => 'Mains (Wots & Tibs)', 'name' => 'Beef Tibs', 'price' => 19.00, 'prep' => 15],
-                ['category' => 'Mains (Wots & Tibs)', 'name' => 'Kitfo', 'price' => 22.00, 'prep' => 12],
-                ['category' => 'Vegetarian (Yetsom)', 'name' => 'Shiro Wat', 'price' => 14.50, 'prep' => 10],
-                ['category' => 'Vegetarian (Yetsom)', 'name' => 'Misir Wat', 'price' => 15.00, 'prep' => 10],
-                ['category' => 'Vegetarian (Yetsom)', 'name' => 'Gomen', 'price' => 13.50, 'prep' => 8],
-                ['category' => 'Drinks', 'name' => 'Ethiopian Coffee', 'price' => 4.50, 'prep' => 10],
-                ['category' => 'Drinks', 'name' => 'Tej (Honey Wine)', 'price' => 8.00, 'prep' => 2],
-            ])->map(function (array $item) use ($categories, $restaurant) {
-                $category = $categories->firstWhere('name', $item['category']);
-
-                return MenuItem::query()->create([
+            // Demo Cafe uses coffee shop categories, others use Ethiopian
+            if ($restaurant->slug === 'demo-cafe') {
+                $categories = collect([
+                    ['name' => 'Coffee', 'display_order' => 1],
+                    ['name' => 'Food', 'display_order' => 2],
+                    ['name' => 'Drinks', 'display_order' => 3],
+                ])->map(fn(array $category) => MenuCategory::query()->create([
                     'restaurant_id' => $restaurant->id,
-                    'menu_category_id' => $category?->id,
-                    'name' => $item['name'],
-                    'sku' => Str::upper(Str::slug($restaurant->slug . '-' . $item['name'])),
-                    'description' => $item['name'] . ' - house favorite.',
-                    'price' => $item['price'],
-                    'is_available' => true,
-                    'preparation_time_minutes' => $item['prep'],
-                ]);
-            });
+                    'name' => $category['name'],
+                    'display_order' => $category['display_order'],
+                    'is_active' => true,
+                ]));
 
-            $ingredients = collect([
-                ['name' => 'Teff Flour', 'unit' => 'kg', 'stock' => 50.000, 'reorder' => 15.000, 'cost' => 4.50],
-                ['name' => 'Berbere Spice', 'unit' => 'kg', 'stock' => 10.000, 'reorder' => 3.000, 'cost' => 12.00],
-                ['name' => 'Niter Kibbeh', 'unit' => 'kg', 'stock' => 8.000, 'reorder' => 2.000, 'cost' => 18.00],
-                ['name' => 'Chicken', 'unit' => 'kg', 'stock' => 30.000, 'reorder' => 10.000, 'cost' => 5.50],
-                ['name' => 'Beef', 'unit' => 'kg', 'stock' => 25.000, 'reorder' => 8.000, 'cost' => 8.00],
-                ['name' => 'Coffee Beans (Yirgacheffe)', 'unit' => 'kg', 'stock' => 15.000, 'reorder' => 5.000, 'cost' => 15.00],
-            ])->map(fn(array $ingredient) => Ingredient::query()->create([
-                'restaurant_id' => $restaurant->id,
-                'name' => $ingredient['name'],
-                'unit' => $ingredient['unit'],
-                'current_stock' => $ingredient['stock'],
-                'reorder_level' => $ingredient['reorder'],
-                'cost_per_unit' => $ingredient['cost'],
-                'is_active' => true,
-            ]));
+                $menuItems = collect([
+                    ['category' => 'Coffee', 'name' => 'Espresso', 'price' => 2.50, 'prep' => 3],
+                    ['category' => 'Coffee', 'name' => 'Cappuccino', 'price' => 3.50, 'prep' => 4],
+                    ['category' => 'Coffee', 'name' => 'Latte', 'price' => 3.50, 'prep' => 4],
+                    ['category' => 'Food', 'name' => 'Club Sandwich', 'price' => 6.00, 'prep' => 8],
+                    ['category' => 'Food', 'name' => 'Caesar Salad', 'price' => 5.50, 'prep' => 5],
+                    ['category' => 'Drinks', 'name' => 'Fresh Juice', 'price' => 3.00, 'prep' => 3],
+                ])->map(function (array $item) use ($categories, $restaurant) {
+                    $category = $categories->firstWhere('name', $item['category']);
+                    return MenuItem::query()->create([
+                        'restaurant_id' => $restaurant->id,
+                        'menu_category_id' => $category?->id,
+                        'name' => $item['name'],
+                        'sku' => Str::upper(Str::slug($restaurant->slug . '-' . $item['name'])),
+                        'description' => $item['name'] . ' - house favorite.',
+                        'price' => $item['price'],
+                        'is_available' => true,
+                        'preparation_time_minutes' => $item['prep'],
+                    ]);
+                });
+            } else {
+                $categories = collect([
+                    ['name' => 'Mains (Wots & Tibs)', 'display_order' => 1],
+                    ['name' => 'Vegetarian (Yetsom)', 'display_order' => 2],
+                    ['name' => 'Drinks', 'display_order' => 3],
+                ])->map(fn(array $category) => MenuCategory::query()->create([
+                    'restaurant_id' => $restaurant->id,
+                    'name' => $category['name'],
+                    'display_order' => $category['display_order'],
+                    'is_active' => true,
+                ]));
+
+                $menuItems = collect([
+                    ['category' => 'Mains (Wots & Tibs)', 'name' => 'Doro Wat', 'price' => 18.50, 'prep' => 25],
+                    ['category' => 'Mains (Wots & Tibs)', 'name' => 'Beef Tibs', 'price' => 19.00, 'prep' => 15],
+                    ['category' => 'Mains (Wots & Tibs)', 'name' => 'Kitfo', 'price' => 22.00, 'prep' => 12],
+                    ['category' => 'Vegetarian (Yetsom)', 'name' => 'Shiro Wat', 'price' => 14.50, 'prep' => 10],
+                    ['category' => 'Vegetarian (Yetsom)', 'name' => 'Misir Wat', 'price' => 15.00, 'prep' => 10],
+                    ['category' => 'Vegetarian (Yetsom)', 'name' => 'Gomen', 'price' => 13.50, 'prep' => 8],
+                    ['category' => 'Drinks', 'name' => 'Ethiopian Coffee', 'price' => 4.50, 'prep' => 10],
+                    ['category' => 'Drinks', 'name' => 'Tej (Honey Wine)', 'price' => 8.00, 'prep' => 2],
+                ])->map(function (array $item) use ($categories, $restaurant) {
+                    $category = $categories->firstWhere('name', $item['category']);
+                    return MenuItem::query()->create([
+                        'restaurant_id' => $restaurant->id,
+                        'menu_category_id' => $category?->id,
+                        'name' => $item['name'],
+                        'sku' => Str::upper(Str::slug($restaurant->slug . '-' . $item['name'])),
+                        'description' => $item['name'] . ' - house favorite.',
+                        'price' => $item['price'],
+                        'is_available' => true,
+                        'preparation_time_minutes' => $item['prep'],
+                    ]);
+                });
+            }
+
+            // Demo Cafe uses coffee shop ingredients, others use Ethiopian
+            if ($restaurant->slug === 'demo-cafe') {
+                $ingredients = collect([
+                    ['name' => 'Coffee Beans', 'unit' => 'g', 'stock' => 1000.000, 'reorder' => 100.000, 'cost' => 0.02],
+                    ['name' => 'Milk', 'unit' => 'ml', 'stock' => 5000.000, 'reorder' => 500.000, 'cost' => 0.003],
+                    ['name' => 'Bread', 'unit' => 'pcs', 'stock' => 50.000, 'reorder' => 10.000, 'cost' => 0.50],
+                    ['name' => 'Chicken', 'unit' => 'g', 'stock' => 2000.000, 'reorder' => 200.000, 'cost' => 0.01],
+                    ['name' => 'Lettuce', 'unit' => 'g', 'stock' => 1000.000, 'reorder' => 100.000, 'cost' => 0.005],
+                ])->map(fn(array $ingredient) => Ingredient::query()->create([
+                    'restaurant_id' => $restaurant->id,
+                    'name' => $ingredient['name'],
+                    'unit' => $ingredient['unit'],
+                    'current_stock' => $ingredient['stock'],
+                    'reorder_level' => $ingredient['reorder'],
+                    'cost_per_unit' => $ingredient['cost'],
+                    'is_active' => true,
+                ]));
+
+                // Add recipe ingredients for Demo Cafe items
+                $espresso = $menuItems->firstWhere('name', 'Espresso');
+                $cappuccino = $menuItems->firstWhere('name', 'Cappuccino');
+                $sandwich = $menuItems->firstWhere('name', 'Club Sandwich');
+                $coffeeBeans = $ingredients->firstWhere('name', 'Coffee Beans');
+                $milk = $ingredients->firstWhere('name', 'Milk');
+                $bread = $ingredients->firstWhere('name', 'Bread');
+                $chicken = $ingredients->firstWhere('name', 'Chicken');
+                $lettuce = $ingredients->firstWhere('name', 'Lettuce');
+
+                if ($espresso && $coffeeBeans) {
+                    \App\Models\RecipeIngredient::create([
+                        'restaurant_id' => $restaurant->id,
+                        'menu_item_id' => $espresso->id,
+                        'ingredient_id' => $coffeeBeans->id,
+                        'quantity_required' => 8.000,
+                    ]);
+                }
+                if ($cappuccino && $coffeeBeans && $milk) {
+                    \App\Models\RecipeIngredient::create([
+                        'restaurant_id' => $restaurant->id,
+                        'menu_item_id' => $cappuccino->id,
+                        'ingredient_id' => $coffeeBeans->id,
+                        'quantity_required' => 8.000,
+                    ]);
+                    \App\Models\RecipeIngredient::create([
+                        'restaurant_id' => $restaurant->id,
+                        'menu_item_id' => $cappuccino->id,
+                        'ingredient_id' => $milk->id,
+                        'quantity_required' => 150.000,
+                    ]);
+                }
+                if ($sandwich && $bread && $chicken && $lettuce) {
+                    \App\Models\RecipeIngredient::create([
+                        'restaurant_id' => $restaurant->id,
+                        'menu_item_id' => $sandwich->id,
+                        'ingredient_id' => $bread->id,
+                        'quantity_required' => 2.000,
+                    ]);
+                    \App\Models\RecipeIngredient::create([
+                        'restaurant_id' => $restaurant->id,
+                        'menu_item_id' => $sandwich->id,
+                        'ingredient_id' => $chicken->id,
+                        'quantity_required' => 100.000,
+                    ]);
+                    \App\Models\RecipeIngredient::create([
+                        'restaurant_id' => $restaurant->id,
+                        'menu_item_id' => $sandwich->id,
+                        'ingredient_id' => $lettuce->id,
+                        'quantity_required' => 30.000,
+                    ]);
+                }
+            } else {
+                $ingredients = collect([
+                    ['name' => 'Teff Flour', 'unit' => 'kg', 'stock' => 50.000, 'reorder' => 15.000, 'cost' => 4.50],
+                    ['name' => 'Berbere Spice', 'unit' => 'kg', 'stock' => 10.000, 'reorder' => 3.000, 'cost' => 12.00],
+                    ['name' => 'Niter Kibbeh', 'unit' => 'kg', 'stock' => 8.000, 'reorder' => 2.000, 'cost' => 18.00],
+                    ['name' => 'Chicken', 'unit' => 'kg', 'stock' => 30.000, 'reorder' => 10.000, 'cost' => 5.50],
+                    ['name' => 'Beef', 'unit' => 'kg', 'stock' => 25.000, 'reorder' => 8.000, 'cost' => 8.00],
+                    ['name' => 'Coffee Beans (Yirgacheffe)', 'unit' => 'kg', 'stock' => 15.000, 'reorder' => 5.000, 'cost' => 15.00],
+                ])->map(fn(array $ingredient) => Ingredient::query()->create([
+                    'restaurant_id' => $restaurant->id,
+                    'name' => $ingredient['name'],
+                    'unit' => $ingredient['unit'],
+                    'current_stock' => $ingredient['stock'],
+                    'reorder_level' => $ingredient['reorder'],
+                    'cost_per_unit' => $ingredient['cost'],
+                    'is_active' => true,
+                ]));
+            }
 
             foreach ($ingredients as $ingredient) {
                 $inQty = round((float) rand(20, 50) / 10, 3);

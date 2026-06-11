@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Responses\ApiResponse;
 use App\Models\Restaurant;
+use App\Models\RolePermission;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -12,51 +14,34 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Base API controller with RBAC, tenant scoping, and generic CRUD.
+ *
+ * All business logic should delegate to Service classes.
+ */
 abstract class BaseApiController extends Controller
 {
     protected int $perPage = 20;
 
-    /**
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     protected array $searchable = [];
 
-    /**
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     protected array $with = [];
 
-    /**
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     protected array $allowedRoles = ['restaurant', 'customer'];
 
-    /**
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     protected array $allowedStaffRoles = [
-        'manager',
-        'floor_manager',
-        'host',
-        'server',
-        'cashier',
-        'barista',
-        'kitchen',
-        'inventory',
+        'manager', 'floor_manager', 'host', 'server',
+        'cashier', 'barista', 'kitchen', 'inventory',
     ];
 
-    /**
-     * @var array<int, string>
-     */
+    /** @var array<int, string> */
     protected array $mutableStaffRoles = [
-        'manager',
-        'floor_manager',
-        'host',
-        'server',
-        'cashier',
-        'barista',
-        'kitchen',
-        'inventory',
+        'manager', 'floor_manager', 'host', 'server',
+        'cashier', 'barista', 'kitchen', 'inventory',
     ];
 
     protected bool $allowCustomerMutations = false;
@@ -75,7 +60,7 @@ abstract class BaseApiController extends Controller
     abstract protected function rules(bool $updating = false): array;
 
     /**
-     * @param array<string, mixed> $validated
+     * @param  array<string, mixed> $validated
      * @return array<string, mixed>
      */
     protected function mutateValidated(array $validated, Request $request, ?int $restaurantId, bool $updating = false): array
@@ -87,6 +72,9 @@ abstract class BaseApiController extends Controller
         return $validated;
     }
 
+    /**
+     * List records with search and pagination.
+     */
     public function index(Request $request): JsonResponse
     {
         $this->ensureRoleAllowed($request);
@@ -104,9 +92,12 @@ abstract class BaseApiController extends Controller
         $perPage = (int) $request->query('per_page', $this->perPage);
         $data = $query->latest()->paginate(max($perPage, 1));
 
-        return response()->json($data);
+        return ApiResponse::success($data);
     }
 
+    /**
+     * Create a new record.
+     */
     public function store(Request $request): JsonResponse
     {
         $this->ensureRoleAllowed($request, true);
@@ -119,17 +110,23 @@ abstract class BaseApiController extends Controller
         $record = $modelClass::create($validated);
         $record->load($this->with);
 
-        return response()->json($record, 201);
+        return ApiResponse::success($record, 'Created', 201);
     }
 
+    /**
+     * Show a single record.
+     */
     public function show(string $id): JsonResponse
     {
         $this->ensureRoleAllowed(request());
         $record = $this->scopedQuery(request())->findOrFail($id);
 
-        return response()->json($record);
+        return ApiResponse::success($record);
     }
 
+    /**
+     * Update an existing record.
+     */
     public function update(Request $request, string $id): JsonResponse
     {
         $this->ensureRoleAllowed($request, true);
@@ -141,18 +138,24 @@ abstract class BaseApiController extends Controller
         $record->update($validated);
         $record->load($this->with);
 
-        return response()->json($record);
+        return ApiResponse::success($record, 'Updated');
     }
 
+    /**
+     * Delete a record.
+     */
     public function destroy(string $id): JsonResponse
     {
         $this->ensureRoleAllowed(request(), true);
         $record = $this->scopedQuery(request())->findOrFail($id);
         $record->delete();
 
-        return response()->json(['message' => 'Deleted']);
+        return ApiResponse::success(null, 'Deleted');
     }
 
+    /**
+     * Build a tenant-scoped query.
+     */
     protected function scopedQuery(Request $request): Builder
     {
         $model = $this->modelClass();
@@ -180,31 +183,80 @@ abstract class BaseApiController extends Controller
         return $query;
     }
 
+    /**
+     * Derive the entity key for RBAC lookups.
+     */
+    protected function entityKey(): ?string
+    {
+        if (property_exists($this, 'entityKey') && $this->entityKey !== null) {
+            return $this->entityKey;
+        }
+
+        $class = class_basename($this->modelClass());
+        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $class));
+    }
+
+    /**
+     * Check if the user's role is allowed for this endpoint.
+     */
     protected function ensureRoleAllowed(Request $request, bool $mutation = false): void
     {
         /** @var User|null $user */
         $user = $request->user();
         if (!$user) {
-            throw new HttpResponseException(response()->json(['message' => 'Unauthenticated'], 401));
+            throw new HttpResponseException(ApiResponse::unauthorized());
         }
 
         if (!in_array($user->role, $this->allowedRoles, true)) {
-            throw new HttpResponseException(response()->json(['message' => 'Forbidden'], 403));
+            throw new HttpResponseException(ApiResponse::error('Forbidden', null, 403));
         }
 
         if ($user->isRestaurantStaff()) {
+            // Restaurant owners (no staff_role) bypass RBAC — full access
+            if (empty($user->staff_role)) {
+                return;
+            }
+
+            $entityKey = $this->entityKey();
+
+            if ($entityKey) {
+                $permission = RolePermission::where('restaurant_id', $user->restaurant_id)
+                    ->where('user_id', $user->id)
+                    ->where('entity_key', $entityKey)
+                    ->first();
+
+                if (!$permission) {
+                    $permission = RolePermission::where('restaurant_id', $user->restaurant_id)
+                        ->where('staff_role', $user->staff_role)
+                        ->whereNull('user_id')
+                        ->where('entity_key', $entityKey)
+                        ->first();
+                }
+
+                if ($permission) {
+                    $allowed = $mutation ? $permission->can_write : $permission->can_read;
+                    if (!$allowed) {
+                        throw new HttpResponseException(ApiResponse::error('Forbidden (RBAC policy violation)', null, 403));
+                    }
+                    return;
+                }
+            }
+
             $allowedStaffRoles = $mutation ? $this->mutableStaffRoles : $this->allowedStaffRoles;
 
             if (!in_array((string) $user->staff_role, $allowedStaffRoles, true)) {
-                throw new HttpResponseException(response()->json(['message' => 'Forbidden'], 403));
+                throw new HttpResponseException(ApiResponse::error('Forbidden', null, 403));
             }
         }
 
         if ($mutation && $user->isCustomer() && !$this->allowCustomerMutations) {
-            throw new HttpResponseException(response()->json(['message' => 'Forbidden'], 403));
+            throw new HttpResponseException(ApiResponse::error('Forbidden', null, 403));
         }
     }
 
+    /**
+     * Resolve the restaurant ID from the request context.
+     */
     protected function resolveRestaurantContext(Request $request): ?int
     {
         if (!$this->tenantScoped) {

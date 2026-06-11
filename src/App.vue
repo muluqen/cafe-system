@@ -1,38 +1,20 @@
-<template>
-  <button class="theme-toggle" type="button" @click="toggleTheme" :title="theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
-    <span v-if="theme === 'dark'">☀️</span>
-    <span v-else>🌙</span>
-  </button>
-  <RouterView />
+﻿<template>
+  <RouterView v-slot="{ Component }">
+    <Transition name="page" mode="out-in">
+      <component :is="Component" />
+    </Transition>
+  </RouterView>
+  <BaseToast />
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from "vue";
-import { RouterView } from "vue-router";
-
-const THEME_KEY = "dinedirect_theme";
-const theme = ref("light");
-
-function applyTheme(value) {
-  document.documentElement.dataset.theme = value;
-}
-
-function toggleTheme() {
-  theme.value = theme.value === "dark" ? "light" : "dark";
-}
-
-onMounted(() => {
-  const savedTheme = localStorage.getItem(THEME_KEY);
-  const preferredDark =
-    window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches;
-
-  theme.value = savedTheme || (preferredDark ? "dark" : "light");
-  applyTheme(theme.value);
-});
-
-watch(theme, (value) => {
-  applyTheme(value);
-  localStorage.setItem(THEME_KEY, value);
-});
+import BaseToast from './components/ui/BaseToast.vue';
 </script>
+
+<style>
+.page-enter-active, .page-leave-active {
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.page-enter-from { opacity: 0; transform: translateY(8px); }
+.page-leave-to { opacity: 0; transform: translateY(-8px); }
+</style>

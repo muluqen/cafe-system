@@ -2,13 +2,18 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Responses\ApiResponse;
 use App\Models\DiningTable;
+use Illuminate\Http\JsonResponse;
 
+/**
+ * Handles dining table CRUD.
+ */
 class TableController extends BaseApiController
 {
     protected array $allowedRoles = ['restaurant', 'customer'];
-    protected array $allowedStaffRoles = ['manager', 'cashier', 'barista'];
-    protected array $mutableStaffRoles = ['manager', 'cashier'];
+    protected array $allowedStaffRoles = ['manager', 'floor_manager', 'host', 'server', 'cashier'];
+    protected array $mutableStaffRoles = ['manager', 'floor_manager', 'host', 'cashier'];
 
     protected array $searchable = ['name', 'location', 'status'];
 
@@ -22,12 +27,12 @@ class TableController extends BaseApiController
     protected function rules(bool $updating = false): array
     {
         return [
-            'restaurant_id' => [$updating ? 'sometimes' : 'required', 'exists:restaurants,id'],
-            'name' => [$updating ? 'sometimes' : 'required', 'string', 'max:100'],
-            'capacity' => ['sometimes', 'integer', 'min:1'],
-            'location' => ['nullable', 'string', 'max:120'],
-            'status' => ['sometimes', 'string', 'max:40'],
-            'is_active' => ['sometimes', 'boolean'],
+            'restaurant_id' => ['sometimes', 'nullable', 'exists:restaurants,id'],
+            'name'          => [$updating ? 'sometimes' : 'required', 'string', 'max:100'],
+            'capacity'      => ['sometimes', 'integer', 'min:1'],
+            'location'      => ['nullable', 'string', 'max:120'],
+            'status'        => ['sometimes', 'string', 'max:40'],
+            'is_active'     => ['sometimes', 'boolean'],
         ];
     }
 }
